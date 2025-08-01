@@ -1,0 +1,42 @@
+[project]
+name = "mcp-server-learning"
+version = "0.1.0"
+description = "MCP server for learning tools including flashcard generation and management"
+readme = "README.md"
+authors = [
+    { email = "dvd.hnrchs@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.11.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+mcp-server-learning = "mcp_server_learning.flashcard_server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.1",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "mypy>=1.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
