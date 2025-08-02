@@ -13,6 +13,8 @@ The flashcard server provides tools for creating, managing, and exporting flashc
 - **Anki Integration**: Direct upload to Anki using AnkiConnect addon
 - **HTML Preview**: Generate beautiful HTML previews of your flashcards
 - **Diagram Support**: Handle ASCII art, TikZ diagrams, and flowcharts
+- **Zotero Integration**: Generate flashcards from your Zotero research library
+- **Obsidian Integration**: Create flashcards from your Obsidian vault notes
 
 ## Installation
 
@@ -111,13 +113,96 @@ Generate HTML preview of flashcards.
 - `title`: Preview title
 - `tags`: Tags to display
 
-## Anki Integration
+### Zotero Integration Tools
+
+#### `connect_zotero`
+Connect to your Zotero library using Web API or local database.
+
+**Parameters:**
+- `api_key`: Zotero Web API key (optional for local access)
+- `user_id`: Your Zotero user ID for personal library
+- `group_id`: Zotero group ID for group library
+- `local_profile_path`: Path to local Zotero profile (optional)
+- `prefer_local`: Whether to prefer local database over Web API
+
+#### `search_zotero`
+Search items in your connected Zotero library.
+
+**Parameters:**
+- `query`: Search terms
+- `limit`: Maximum number of results (default: 20)
+
+#### `get_zotero_collections`
+List all collections in your Zotero library.
+
+#### `create_flashcards_from_zotero`
+Generate flashcards from Zotero items or collections.
+
+**Parameters:**
+- `item_keys`: Specific Zotero item keys to use
+- `collection_id`: Collection ID to generate cards from
+- `card_types`: Types of cards to create (`citation`, `summary`, `definition`)
+- `citation_style`: Citation format (`apa`)
+
+### Obsidian Integration Tools
+
+#### `connect_obsidian`
+Connect to an Obsidian vault.
+
+**Parameters:**
+- `vault_path`: Path to your Obsidian vault directory
+
+#### `search_obsidian`
+Search notes in your connected Obsidian vault.
+
+**Parameters:**
+- `query`: Search terms
+- `search_in`: Fields to search (`content`, `title`, `tags`)
+- `limit`: Maximum number of results (default: 20)
+
+#### `get_obsidian_vault_stats`
+Get statistics about your Obsidian vault (note count, tags, etc.).
+
+#### `create_flashcards_from_obsidian`
+Generate flashcards from Obsidian notes.
+
+**Parameters:**
+- `note_names`: Specific note names to process
+- `tag_filter`: Only process notes with this tag
+- `content_types`: Types of content to extract (`headers`, `definitions`, `lists`, `quotes`)
+- `card_type`: Type of flashcards to generate (`front-back`, `cloze`)
+
+## Integration Setup
+
+### Anki Integration
 
 To use Anki integration:
 
 1. Install the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) addon in Anki
 2. Start Anki with the addon enabled
 3. Use the `upload_to_anki` or `check_anki_connection` tools
+
+### Zotero Integration
+
+To use Zotero integration:
+
+**Option 1: Local Database (Recommended)**
+1. Install Zotero desktop application
+2. Use `connect_zotero` tool with local access
+3. No additional setup required
+
+**Option 2: Web API**
+1. Get your Zotero API key from [zotero.org/settings/keys](https://www.zotero.org/settings/keys)
+2. Find your user ID from your Zotero profile URL
+3. Use `connect_zotero` tool with API credentials
+
+### Obsidian Integration
+
+To use Obsidian integration:
+
+1. Locate your Obsidian vault directory
+2. Use `connect_obsidian` tool with the vault path
+3. The connector will scan and index your notes automatically
 
 ## Development
 
@@ -164,11 +249,47 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Usage Examples
+
+### Basic Flashcard Creation
+```
+# Create flashcards from text
+create_flashcards(content="Q: What is Python? A: A programming language", card_type="front-back")
+
+# Create cloze deletion cards
+create_flashcards(content="Python is a {{programming language}} used for {{web development}}.", card_type="cloze")
+```
+
+### Zotero Integration Workflow
+```
+# Connect to Zotero
+connect_zotero(prefer_local=True)
+
+# Search your library
+search_zotero(query="machine learning", limit=10)
+
+# Generate citation flashcards
+create_flashcards_from_zotero(item_keys=["ITEM123"], card_types=["citation", "summary"])
+```
+
+### Obsidian Integration Workflow
+```
+# Connect to vault
+connect_obsidian(vault_path="/path/to/your/vault")
+
+# Search notes
+search_obsidian(query="neural networks", search_in=["content", "tags"])
+
+# Generate flashcards from notes
+create_flashcards_from_obsidian(tag_filter="study", content_types=["definitions", "headers"])
+```
+
 ## Future Features
 
-- Spaced repetition scheduling
-- Quiz generation
-- Study statistics
-- Integration with other learning platforms
+- Advanced citation styles (MLA, Chicago, IEEE)
+- Batch processing for large collections
+- Spaced repetition scheduling integration
+- Cross-reference detection between Zotero and Obsidian
 - Support for multimedia flashcards
+- Export to other flashcard platforms
 - Collaborative learning features

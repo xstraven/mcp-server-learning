@@ -18,7 +18,14 @@ from mcp.types import (
 )
 import mcp.types as types
 
+from .zotero_connector import ZoteroConnector
+from .obsidian_connector import ObsidianConnector
+
 server = Server("mcp-server-learning-flashcards")
+
+# Global connectors - will be initialized when first used
+zotero_connector: Optional[ZoteroConnector] = None
+obsidian_connector: Optional[ObsidianConnector] = None
 
 class AnkiConnector:
     """Interface for connecting to Anki via AnkiConnect addon."""
@@ -926,6 +933,170 @@ async def handle_list_tools() -> list[Tool]:
                 },
                 "required": ["content"]
             }
+        ),
+        Tool(
+            name="connect_zotero",
+            description="Connect to Zotero library (Web API or local database)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Zotero Web API key (optional if using local database)"
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "description": "Zotero user ID for personal library"
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "Zotero group ID for group library"
+                    },
+                    "local_profile_path": {
+                        "type": "string",
+                        "description": "Path to local Zotero profile (optional)"
+                    },
+                    "prefer_local": {
+                        "type": "boolean",
+                        "description": "Prefer local database over Web API",
+                        "default": True
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="search_zotero",
+            description="Search items in connected Zotero library",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query for Zotero items"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return",
+                        "default": 20
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
+            name="get_zotero_collections",
+            description="Get collections from connected Zotero library",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="create_flashcards_from_zotero",
+            description="Generate flashcards from Zotero items or collections",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_keys": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Zotero item keys to generate flashcards from"
+                    },
+                    "collection_id": {
+                        "type": "string",
+                        "description": "Zotero collection ID to generate flashcards from"
+                    },
+                    "card_types": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["citation", "summary", "definition"]},
+                        "description": "Types of flashcards to generate",
+                        "default": ["citation", "summary"]
+                    },
+                    "citation_style": {
+                        "type": "string",
+                        "enum": ["apa"],
+                        "description": "Citation style to use",
+                        "default": "apa"
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connect_obsidian",
+            description="Connect to Obsidian vault",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "vault_path": {
+                        "type": "string",
+                        "description": "Path to Obsidian vault directory"
+                    }
+                },
+                "required": ["vault_path"]
+            }
+        ),
+        Tool(
+            name="search_obsidian",
+            description="Search notes in connected Obsidian vault",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query for Obsidian notes"
+                    },
+                    "search_in": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["content", "title", "tags"]},
+                        "description": "Fields to search in",
+                        "default": ["content", "title", "tags"]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return",
+                        "default": 20
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
+            name="get_obsidian_vault_stats",
+            description="Get statistics about the connected Obsidian vault",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="create_flashcards_from_obsidian",
+            description="Generate flashcards from Obsidian notes",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "note_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Names of Obsidian notes to generate flashcards from"
+                    },
+                    "tag_filter": {
+                        "type": "string",
+                        "description": "Only include notes with this tag"
+                    },
+                    "content_types": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["headers", "definitions", "lists", "quotes"]},
+                        "description": "Types of content to extract for flashcards",
+                        "default": ["headers", "definitions", "lists"]
+                    },
+                    "card_type": {
+                        "type": "string",
+                        "enum": ["front-back", "cloze"],
+                        "description": "Type of flashcards to generate",
+                        "default": "front-back"
+                    }
+                }
+            }
         )
     ]
 
@@ -1102,6 +1273,331 @@ Available Note Types ({len(models)}):
             
         except Exception as e:
             return [types.TextContent(type="text", text=f"Error generating preview: {str(e)}")]
+    
+    elif name == "connect_zotero":
+        global zotero_connector
+        
+        api_key = arguments.get("api_key")
+        user_id = arguments.get("user_id")
+        group_id = arguments.get("group_id")
+        local_profile_path = arguments.get("local_profile_path")
+        prefer_local = arguments.get("prefer_local", True)
+        
+        try:
+            zotero_connector = ZoteroConnector(
+                api_key=api_key,
+                user_id=user_id,
+                group_id=group_id,
+                local_profile_path=local_profile_path,
+                prefer_local=prefer_local
+            )
+            
+            availability = zotero_connector.is_available()
+            response = "Successfully connected to Zotero!\n\n"
+            response += f"Available access methods:\n"
+            response += f"- Web API: {'✓' if availability['web_api'] else '✗'}\n"
+            response += f"- Local Database: {'✓' if availability['local_db'] else '✗'}\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Failed to connect to Zotero: {str(e)}")]
+    
+    elif name == "search_zotero":
+        if not zotero_connector:
+            return [types.TextContent(type="text", text="Please connect to Zotero first using the connect_zotero tool")]
+        
+        query = arguments.get("query", "")
+        limit = arguments.get("limit", 20)
+        
+        if not query:
+            return [types.TextContent(type="text", text="Search query is required")]
+        
+        try:
+            items = zotero_connector.search_items(query, limit)
+            
+            if not items:
+                return [types.TextContent(type="text", text=f"No items found for query: {query}")]
+            
+            response = f"Found {len(items)} items for '{query}':\n\n"
+            
+            for i, item in enumerate(items[:limit], 1):
+                metadata = zotero_connector.get_item_metadata(item)
+                response += f"{i}. **{metadata['title']}**\n"
+                response += f"   Authors: {metadata['authors']}\n"
+                response += f"   Year: {metadata['year']}\n"
+                response += f"   Type: {metadata['item_type']}\n"
+                response += f"   Key: {metadata['key']}\n\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error searching Zotero: {str(e)}")]
+    
+    elif name == "get_zotero_collections":
+        if not zotero_connector:
+            return [types.TextContent(type="text", text="Please connect to Zotero first using the connect_zotero tool")]
+        
+        try:
+            collections = zotero_connector.get_collections()
+            
+            if not collections:
+                return [types.TextContent(type="text", text="No collections found in your Zotero library")]
+            
+            response = f"Found {len(collections)} collections:\n\n"
+            
+            for collection in collections:
+                if 'collectionName' in collection:  # Local DB format
+                    response += f"- {collection['collectionName']} (ID: {collection.get('collectionID', 'N/A')})\n"
+                elif 'data' in collection and 'name' in collection['data']:  # Web API format
+                    response += f"- {collection['data']['name']} (Key: {collection.get('key', 'N/A')})\n"
+                else:
+                    response += f"- {collection.get('name', 'Unknown')} (ID: {collection.get('id', 'N/A')})\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error getting collections: {str(e)}")]
+    
+    elif name == "create_flashcards_from_zotero":
+        if not zotero_connector:
+            return [types.TextContent(type="text", text="Please connect to Zotero first using the connect_zotero tool")]
+        
+        item_keys = arguments.get("item_keys", [])
+        collection_id = arguments.get("collection_id")
+        card_types = arguments.get("card_types", ["citation", "summary"])
+        citation_style = arguments.get("citation_style", "apa")
+        
+        try:
+            # Get items either by keys or collection
+            if item_keys:
+                # For now, we'll search for items (would need enhancement for specific key lookup)
+                items = []
+                for key in item_keys:
+                    search_results = zotero_connector.search_items(key, limit=1)
+                    items.extend(search_results)
+            elif collection_id:
+                items = zotero_connector.get_items(collection_key=collection_id)
+            else:
+                return [types.TextContent(type="text", text="Either item_keys or collection_id must be provided")]
+            
+            if not items:
+                return [types.TextContent(type="text", text="No items found to generate flashcards from")]
+            
+            # Generate flashcards
+            flashcards = []
+            
+            for item in items:
+                metadata = zotero_connector.get_item_metadata(item)
+                
+                if "citation" in card_types:
+                    citation = zotero_connector.format_citation(item, citation_style)
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        f"Cite: {metadata['title']}",
+                        citation
+                    )
+                    flashcards.append(flashcard)
+                
+                if "summary" in card_types and metadata['abstract']:
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        f"What is the main focus of '{metadata['title']}'?",
+                        metadata['abstract']
+                    )
+                    flashcards.append(flashcard)
+                
+                if "definition" in card_types:
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        f"Key information about '{metadata['title']}':",
+                        f"Authors: {metadata['authors']}\nYear: {metadata['year']}\nType: {metadata['item_type']}"
+                    )
+                    flashcards.append(flashcard)
+            
+            if not flashcards:
+                return [types.TextContent(type="text", text="No flashcards could be generated from the selected items")]
+            
+            # Create complete LaTeX document
+            result = FlashcardGenerator.create_latex_document(flashcards, "Zotero Flashcards")
+            
+            return [types.TextContent(type="text", text=result)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error generating flashcards from Zotero: {str(e)}")]
+    
+    elif name == "connect_obsidian":
+        global obsidian_connector
+        
+        vault_path = arguments.get("vault_path", "")
+        
+        if not vault_path:
+            return [types.TextContent(type="text", text="Vault path is required")]
+        
+        try:
+            obsidian_connector = ObsidianConnector(vault_path)
+            
+            if not obsidian_connector.is_available():
+                return [types.TextContent(type="text", text=f"Cannot access Obsidian vault at: {vault_path}")]
+            
+            stats = obsidian_connector.get_vault_stats()
+            
+            response = f"Successfully connected to Obsidian vault!\n\n"
+            response += f"Vault Statistics:\n"
+            response += f"- Total notes: {stats['total_notes']}\n"
+            response += f"- Total tags: {stats['total_tags']}\n"
+            response += f"- Vault size: {stats['total_size_bytes']:,} bytes\n"
+            response += f"- Path: {stats['vault_path']}\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Failed to connect to Obsidian vault: {str(e)}")]
+    
+    elif name == "search_obsidian":
+        if not obsidian_connector:
+            return [types.TextContent(type="text", text="Please connect to Obsidian vault first using the connect_obsidian tool")]
+        
+        query = arguments.get("query", "")
+        search_in = arguments.get("search_in", ["content", "title", "tags"])
+        limit = arguments.get("limit", 20)
+        
+        if not query:
+            return [types.TextContent(type="text", text="Search query is required")]
+        
+        try:
+            notes = obsidian_connector.search_notes(query, search_in, limit)
+            
+            if not notes:
+                return [types.TextContent(type="text", text=f"No notes found for query: {query}")]
+            
+            response = f"Found {len(notes)} notes for '{query}':\n\n"
+            
+            for i, note in enumerate(notes[:limit], 1):
+                response += f"{i}. **{note['title']}**\n"
+                response += f"   Path: {note['path']}\n"
+                response += f"   Tags: {', '.join(note['tags']) if note['tags'] else 'None'}\n"
+                response += f"   Modified: {note['modified'][:10]}\n\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error searching Obsidian vault: {str(e)}")]
+    
+    elif name == "get_obsidian_vault_stats":
+        if not obsidian_connector:
+            return [types.TextContent(type="text", text="Please connect to Obsidian vault first using the connect_obsidian tool")]
+        
+        try:
+            stats = obsidian_connector.get_vault_stats()
+            
+            response = f"Obsidian Vault Statistics:\n\n"
+            response += f"📊 **Overview**\n"
+            response += f"- Total notes: {stats['total_notes']}\n"
+            response += f"- Total size: {stats['total_size_bytes']:,} bytes\n"
+            response += f"- Total tags: {stats['total_tags']}\n\n"
+            
+            if stats['note_types']:
+                response += f"📝 **Note Types**\n"
+                for note_type, count in stats['note_types'].items():
+                    response += f"- {note_type}: {count}\n"
+                response += "\n"
+            
+            if stats['all_tags']:
+                response += f"🏷️ **Top Tags** (showing first 20)\n"
+                for tag in stats['all_tags'][:20]:
+                    response += f"- #{tag}\n"
+                if len(stats['all_tags']) > 20:
+                    response += f"... and {len(stats['all_tags']) - 20} more\n"
+            
+            return [types.TextContent(type="text", text=response)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error getting vault stats: {str(e)}")]
+    
+    elif name == "create_flashcards_from_obsidian":
+        if not obsidian_connector:
+            return [types.TextContent(type="text", text="Please connect to Obsidian vault first using the connect_obsidian tool")]
+        
+        note_names = arguments.get("note_names", [])
+        tag_filter = arguments.get("tag_filter")
+        content_types = arguments.get("content_types", ["headers", "definitions", "lists"])
+        card_type = arguments.get("card_type", "front-back")
+        
+        try:
+            # Get notes to process
+            notes_to_process = []
+            
+            if note_names:
+                for name in note_names:
+                    note = obsidian_connector.get_note_by_name(name)
+                    if note:
+                        notes_to_process.append(note)
+            elif tag_filter:
+                notes_to_process = obsidian_connector.get_notes_by_tag(tag_filter)
+            else:
+                return [types.TextContent(type="text", text="Either note_names or tag_filter must be provided")]
+            
+            if not notes_to_process:
+                return [types.TextContent(type="text", text="No notes found to process")]
+            
+            # Extract content and generate flashcards
+            all_flashcard_content = []
+            
+            for note in notes_to_process:
+                content_items = obsidian_connector.extract_content_for_flashcards(note, content_types)
+                all_flashcard_content.extend(content_items)
+            
+            if not all_flashcard_content:
+                return [types.TextContent(type="text", text="No suitable content found for flashcard generation")]
+            
+            # Generate flashcards
+            flashcards = []
+            
+            for content_item in all_flashcard_content:
+                if content_item['type'] == 'header':
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        content_item['question'],
+                        f"From note: {content_item['source_note']}"
+                    )
+                elif content_item['type'] == 'definition':
+                    # Try to extract term and definition
+                    content = content_item['content']
+                    if ' is ' in content:
+                        parts = content.split(' is ', 1)
+                        term = parts[0].strip()
+                        definition = parts[1].strip()
+                        flashcard = FlashcardGenerator.create_front_back_card(
+                            f"What is {term}?",
+                            definition
+                        )
+                    else:
+                        flashcard = FlashcardGenerator.create_front_back_card(
+                            "Definition:",
+                            content
+                        )
+                elif content_item['type'] == 'list_item':
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        f"Key point from {content_item['source_note']}:",
+                        content_item['content']
+                    )
+                elif content_item['type'] == 'quote':
+                    flashcard = FlashcardGenerator.create_front_back_card(
+                        f"Important quote from {content_item['source_note']}:",
+                        content_item['content']
+                    )
+                else:
+                    continue
+                
+                flashcards.append(flashcard)
+            
+            if not flashcards:
+                return [types.TextContent(type="text", text="No flashcards could be generated from the selected content")]
+            
+            # Create complete LaTeX document
+            result = FlashcardGenerator.create_latex_document(flashcards, "Obsidian Flashcards")
+            
+            return [types.TextContent(type="text", text=result)]
+            
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error generating flashcards from Obsidian: {str(e)}")]
     
     else:
         raise ValueError(f"Unknown tool: {name}")
