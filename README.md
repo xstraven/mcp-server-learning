@@ -210,6 +210,79 @@ Add an item to a collection.
 #### `get_item_templates`
 Get templates for creating different item types.
 
+## Obsidian MCP Server
+
+A standalone MCP server for interacting with Obsidian vaults and markdown notes.
+
+### Available Tools
+
+#### `get_vault_stats`
+Get comprehensive statistics about your Obsidian vault.
+
+#### `list_vault_notes`
+List all notes in the vault with optional pagination.
+
+**Parameters:**
+- `limit`: Maximum number of notes to return
+- `offset`: Number of notes to skip (for pagination)
+- `refresh_cache`: Whether to refresh the note cache
+
+#### `search_obsidian_notes`
+Search for notes by content, title, or tags.
+
+**Parameters:**
+- `query` (required): Search terms
+- `search_in`: Fields to search in (content, title, tags)
+- `limit`: Maximum number of results
+
+#### `get_obsidian_note`
+Get detailed information about a specific note.
+
+**Parameters:**
+- `note_name` (required): Name of the note (without .md extension)
+
+#### `get_notes_by_tag`
+Get all notes that have a specific tag.
+
+**Parameters:**
+- `tag` (required): Tag to search for
+
+#### `get_note_backlinks`
+Find all notes that link to a specific note.
+
+**Parameters:**
+- `note_name` (required): Name of the note to find backlinks for
+
+#### `get_orphaned_notes`
+Find notes that have no incoming or outgoing links.
+
+#### `get_note_links`
+Get all wikilinks from a specific note.
+
+**Parameters:**
+- `note_name` (required): Name of the note to get links from
+
+#### `extract_note_headers`
+Extract structured headers from a note.
+
+**Parameters:**
+- `note_name` (required): Name of the note to extract headers from
+
+#### `extract_note_blocks`
+Extract content blocks (paragraphs, lists, quotes, code) from a note.
+
+**Parameters:**
+- `note_name` (required): Name of the note to extract blocks from
+- `block_types`: Types of blocks to extract (paragraph, list, quote, code, header)
+
+#### `get_notes_for_flashcards`
+Extract content from notes that is suitable for flashcard generation.
+
+**Parameters:**
+- `note_names`: Names of specific notes to process
+- `tag_filter`: Only process notes with this tag
+- `content_types`: Types of content to extract (headers, definitions, lists, quotes)
+
 ### Obsidian Integration Tools
 
 #### `connect_obsidian`
@@ -343,6 +416,30 @@ You need to set these environment variables for the Zotero server:
 1. **API Key**: Go to [zotero.org/settings/keys](https://www.zotero.org/settings/keys) and create a new private key
 2. **User ID**: Go to [zotero.org/settings/keys](https://www.zotero.org/settings/keys) - your user ID is shown at the top
 3. **Group ID**: For group libraries, the ID is in the group's URL on zotero.org
+
+### Obsidian Server
+For the standalone Obsidian server, add this to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "uv",
+      "args": ["run", "obsidian-mcp-server"],
+      "cwd": "/path/to/mcp-server-learning",
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "/path/to/your/obsidian/vault"
+      }
+    }
+  }
+}
+```
+
+#### Obsidian Environment Variable
+
+You need to set this environment variable for the Obsidian server:
+
+- **OBSIDIAN_VAULT_PATH**: Full path to your Obsidian vault directory (the folder containing your .md files and .obsidian folder)
 
 ## Contributing
 

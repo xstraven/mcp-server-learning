@@ -18,6 +18,7 @@ dependencies = [
 [project.scripts]
 mcp-server-learning = "mcp_server_learning.flashcard_server:main"
 zotero-mcp-server = "mcp_server_learning.zotero_mcp_server:main"
+obsidian-mcp-server = "mcp_server_learning.obsidian_mcp_server:main"
 
 [project.optional-dependencies]
 dev = [
