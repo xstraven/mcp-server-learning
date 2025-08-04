@@ -13,8 +13,6 @@ The flashcard server provides tools for creating, managing, and exporting flashc
 - **Anki Integration**: Direct upload to Anki using AnkiConnect addon
 - **HTML Preview**: Generate beautiful HTML previews of your flashcards
 - **Diagram Support**: Handle ASCII art, TikZ diagrams, and flowcharts
-- **Zotero Integration**: Generate flashcards from your Zotero research library
-- **Obsidian Integration**: Create flashcards from your Obsidian vault notes
 
 ## Installation
 
@@ -460,29 +458,6 @@ create_flashcards(content="Q: What is Python? A: A programming language", card_t
 create_flashcards(content="Python is a {{programming language}} used for {{web development}}.", card_type="cloze")
 ```
 
-### Zotero Integration Workflow
-```
-# Connect to Zotero
-connect_zotero(prefer_local=True)
-
-# Search your library
-search_zotero(query="machine learning", limit=10)
-
-# Generate citation flashcards
-create_flashcards_from_zotero(item_keys=["ITEM123"], card_types=["citation", "summary"])
-```
-
-### Obsidian Integration Workflow
-```
-# Connect to vault
-connect_obsidian(vault_path="/path/to/your/vault")
-
-# Search notes
-search_obsidian(query="neural networks", search_in=["content", "tags"])
-
-# Generate flashcards from notes
-create_flashcards_from_obsidian(tag_filter="study", content_types=["definitions", "headers"])
-```
 
 ## Future Features
 
