@@ -12,10 +12,12 @@ dependencies = [
     "requests>=2.31.0",
     "PyYAML>=6.0",
     "pathlib>=1.0.1",
+    "pyzotero>=1.5.18",
 ]
 
 [project.scripts]
 mcp-server-learning = "mcp_server_learning.flashcard_server:main"
+zotero-mcp-server = "mcp_server_learning.zotero_mcp_server:main"
 
 [project.optional-dependencies]
 dev = [

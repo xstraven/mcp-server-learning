@@ -144,6 +144,72 @@ Generate flashcards from Zotero items or collections.
 - `card_types`: Types of cards to create (`citation`, `summary`, `definition`)
 - `citation_style`: Citation format (`apa`)
 
+## Zotero MCP Server
+
+A standalone MCP server for interacting with Zotero libraries using the pyzotero package.
+
+### Available Tools
+
+#### `search_zotero_items`
+Search for items in your Zotero library.
+
+**Parameters:**
+- `query` (required): Search terms
+- `limit`: Maximum results (default: 50)  
+- `item_type`: Filter by type (e.g., 'book', 'journalArticle')
+
+#### `get_zotero_item`
+Get detailed information about a specific item.
+
+**Parameters:**
+- `item_key` (required): The Zotero item key
+
+#### `get_item_notes`
+Get all notes associated with an item.
+
+**Parameters:**
+- `item_key` (required): The Zotero item key
+
+#### `list_zotero_collections`
+List all collections in the library.
+
+#### `get_collection_items`
+Get items from a specific collection.
+
+**Parameters:**
+- `collection_key` (required): The collection key
+- `limit`: Maximum results (default: 50)
+
+#### `create_zotero_item`
+Create a new item in the library.
+
+**Parameters:**
+- `item_type` (required): Type of item ('book', 'journalArticle', etc.)
+- `title` (required): Item title
+- `creators`: Array of creator objects
+- `date`: Publication date
+- `url`: Item URL
+- `abstract`: Abstract/summary
+- `tags`: Array of tag strings
+- `extra_fields`: Additional type-specific fields
+
+#### `create_item_note`
+Add a note to an existing item.
+
+**Parameters:**
+- `parent_item_key` (required): Key of the parent item
+- `note_content` (required): HTML-formatted note content
+
+#### `add_item_to_collection`
+Add an item to a collection.
+
+**Parameters:**
+- `item_key` (required): The item key
+- `collection_key` (required): The collection key
+
+#### `get_item_templates`
+Get templates for creating different item types.
+
 ### Obsidian Integration Tools
 
 #### `connect_obsidian`
@@ -227,6 +293,7 @@ uv run mypy src/
 
 ## Configuration with Claude Desktop
 
+### Flashcard Server
 Add to your Claude Desktop configuration:
 
 ```json
@@ -240,6 +307,42 @@ Add to your Claude Desktop configuration:
   }
 }
 ```
+
+### Zotero Server
+For the standalone Zotero server, add this to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "zotero": {
+      "command": "uv",
+      "args": ["run", "zotero-mcp-server"],
+      "cwd": "/path/to/mcp-server-learning",
+      "env": {
+        "ZOTERO_API_KEY": "your-zotero-api-key",
+        "ZOTERO_LIBRARY_ID": "your-library-id", 
+        "ZOTERO_LIBRARY_TYPE": "user"
+      }
+    }
+  }
+}
+```
+
+#### Zotero Environment Variables
+
+You need to set these environment variables for the Zotero server:
+
+- **ZOTERO_API_KEY**: Your Zotero Web API key (get from [zotero.org/settings/keys](https://www.zotero.org/settings/keys))
+- **ZOTERO_LIBRARY_ID**: Your Zotero library ID
+  - For personal library: Your user ID (find in your Zotero profile URL)
+  - For group library: The group ID
+- **ZOTERO_LIBRARY_TYPE**: Either "user" for personal library or "group" for group library
+
+#### Getting Your Zotero Credentials
+
+1. **API Key**: Go to [zotero.org/settings/keys](https://www.zotero.org/settings/keys) and create a new private key
+2. **User ID**: Go to [zotero.org/settings/keys](https://www.zotero.org/settings/keys) - your user ID is shown at the top
+3. **Group ID**: For group libraries, the ID is in the group's URL on zotero.org
 
 ## Contributing
 
