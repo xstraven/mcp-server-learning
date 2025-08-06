@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "learning": {
-      "command": "uv",
-      "args": ["run", "mcp-server-learning"],
-      "cwd": "/Users/david/projects/mcp-server-learning"
-    }
-  }
-}

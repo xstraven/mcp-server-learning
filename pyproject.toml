@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "mcp[cli]>=1.11.0",
+    "fastmcp>=0.13.0",
     "requests>=2.31.0",
     "PyYAML>=6.0",
     "pathlib>=1.0.1",
@@ -18,6 +19,7 @@ dependencies = [
 [project.scripts]
 mcp-server-learning = "mcp_server_learning.flashcard_server:main"
 zotero-mcp-server = "mcp_server_learning.zotero_mcp_server:main"
+fastmcp-zotero-server = "mcp_server_learning.fastmcp_zotero_server:main"
 obsidian-mcp-server = "mcp_server_learning.obsidian_mcp_server:main"
 
 [project.optional-dependencies]
