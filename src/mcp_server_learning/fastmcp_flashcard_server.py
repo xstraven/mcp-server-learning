@@ -130,6 +130,32 @@ class FlashcardGenerator:
     """Generates flashcards from text."""
 
     @staticmethod
+    def convert_latex_to_display_format(text: str) -> str:
+        """Convert LaTeX equations to display format for better rendering in Anki."""
+        if not text:
+            return text
+        
+        # Define patterns to convert to display format
+        # Apply in order of precedence (longest patterns first)
+        
+        result = text
+        
+        # $$equation$$ -> \[equation\] (do this first to avoid conflicts with single $)
+        result = re.sub(r'\$\$([^$]+?)\$\$', r'\\[\1\\]', result)
+        
+        # $equation$ -> \[equation\]
+        result = re.sub(r'\$([^$\n]+?)\$', r'\\[\1\\]', result)
+        
+        # \(equation\) -> \[equation\]
+        def replace_parens(match):
+            content = match.group(0)[2:-2]  # Remove \( and \)
+            return f'\\[{content}\\]'
+        
+        result = re.sub(r'\\?\\\([^)]+?\\\)', replace_parens, result)
+        
+        return result
+
+    @staticmethod
     def create_anki_cloze_card(text: str, cloze_markers: List[str] = None) -> str:
         """Create a cloze deletion card in Anki format."""
         if cloze_markers is None:
@@ -168,9 +194,16 @@ class FlashcardGenerator:
                 # Look for Q: A: pattern
                 qa_match = re.search(r"Q:\s*(.*?)\s*A:\s*(.*)", section, re.DOTALL | re.IGNORECASE)
                 if qa_match:
+                    front = qa_match.group(1).strip()
+                    back = qa_match.group(2).strip()
+                    
+                    # Convert LaTeX to display format
+                    front = FlashcardGenerator.convert_latex_to_display_format(front)
+                    back = FlashcardGenerator.convert_latex_to_display_format(back)
+                    
                     cards.append({
-                        "front": qa_match.group(1).strip(),
-                        "back": qa_match.group(2).strip()
+                        "front": front,
+                        "back": back
                     })
                     continue
 
@@ -179,6 +212,11 @@ class FlashcardGenerator:
                 if len(lines) >= 2:
                     front = lines[0].strip()
                     back = "\n".join(lines[1:]).strip()
+                    
+                    # Convert LaTeX to display format
+                    front = FlashcardGenerator.convert_latex_to_display_format(front)
+                    back = FlashcardGenerator.convert_latex_to_display_format(back)
+                    
                     cards.append({"front": front, "back": back})
 
         elif card_type == "cloze":
@@ -192,6 +230,8 @@ class FlashcardGenerator:
 
                 try:
                     cloze_text = FlashcardGenerator.create_anki_cloze_card(section)
+                    # Convert LaTeX to display format
+                    cloze_text = FlashcardGenerator.convert_latex_to_display_format(cloze_text)
                     cards.append({"text": cloze_text})
                 except ValueError:
                     # If no cloze markers found, skip this section
