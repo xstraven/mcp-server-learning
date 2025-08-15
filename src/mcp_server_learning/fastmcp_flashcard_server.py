@@ -127,33 +127,48 @@ class AnkiConnector:
 
 
 class FlashcardGenerator:
-    """Generates flashcards from text."""
+    """Generates flashcards from text with proper LaTeX math formatting.
+    
+    Math Rendering:
+    - Claude Desktop: Uses standard LaTeX ($...$ and $$...$$) - renders natively
+    - Anki: Converts to MathJax format (\\(...\\) and \\[...\\]) - works with Anki's MathJax
+    
+    LaTeX Examples:
+    - Inline math: $E = mc^2$
+    - Display math: $$P(X \\geq a) \\leq \\frac{E[X]}{a}$$
+    - Greek letters: $\\sigma$, $\\alpha$, $\\beta$
+    - Fractions: $\\frac{1}{1 + e^{-x}}$
+    - Subscripts/superscripts: $x_i^2$, $e^{-x}$
+    """
 
     @staticmethod
-    def convert_latex_to_display_format(text: str) -> str:
-        """Convert LaTeX equations to display format for better rendering in Anki."""
+    def preserve_claude_latex(text: str) -> str:
+        """Keep standard LaTeX format for Claude Desktop (native LaTeX rendering)."""
         if not text:
             return text
         
-        # Define patterns to convert to display format
-        # Apply in order of precedence (longest patterns first)
-        
+        # Claude Desktop supports standard LaTeX natively
+        # Just clean up any escaping issues
+        result = text.replace('\\$', '$')  # Unescape dollar signs
+        return result
+
+    @staticmethod
+    def convert_to_anki_mathjax(text: str) -> str:
+        """Convert standard LaTeX to Anki MathJax format."""
+        if not text:
+            return text
+            
         result = text
         
-        # $$equation$$ -> \[equation\] (do this first to avoid conflicts with single $)
+        # Convert standard LaTeX delimiters to Anki MathJax format
+        # $$display math$$ -> \[display math\]
         result = re.sub(r'\$\$([^$]+?)\$\$', r'\\[\1\\]', result)
         
-        # $equation$ -> \[equation\]
-        result = re.sub(r'\$([^$\n]+?)\$', r'\\[\1\\]', result)
-        
-        # \(equation\) -> \[equation\]
-        def replace_parens(match):
-            content = match.group(0)[2:-2]  # Remove \( and \)
-            return f'\\[{content}\\]'
-        
-        result = re.sub(r'\\?\\\([^)]+?\\\)', replace_parens, result)
+        # $inline math$ -> \(inline math\)
+        result = re.sub(r'\$([^$\n]+?)\$', r'\\(\1\\)', result)
         
         return result
+
 
     @staticmethod
     def create_anki_cloze_card(text: str, cloze_markers: List[str] = None) -> str:
@@ -179,45 +194,47 @@ class FlashcardGenerator:
 
     @staticmethod
     def parse_text_to_cards(text: str, card_type: str = "front-back") -> List[Dict[str, str]]:
-        """Parse text into multiple flashcards."""
+        """Parse text into multiple flashcards (preserves LaTeX for Claude Desktop)."""
         cards = []
 
         if card_type == "front-back":
-            # Split by double newlines or specific separators
-            sections = re.split(r"\n\s*\n|---", text.strip())
-
-            for section in sections:
-                section = section.strip()
-                if not section:
-                    continue
-
-                # Look for Q: A: pattern
-                qa_match = re.search(r"Q:\s*(.*?)\s*A:\s*(.*)", section, re.DOTALL | re.IGNORECASE)
-                if qa_match:
+            # First, try to find Q: A: patterns in the entire text (not split by newlines)
+            qa_matches = list(re.finditer(r"Q:\s*(.*?)\s*A:\s*(.*?)(?=Q:|$)", text.strip(), re.DOTALL | re.IGNORECASE))
+            
+            if qa_matches:
+                # Process Q: A: patterns found
+                for qa_match in qa_matches:
                     front = qa_match.group(1).strip()
                     back = qa_match.group(2).strip()
                     
-                    # Convert LaTeX to display format
-                    front = FlashcardGenerator.convert_latex_to_display_format(front)
-                    back = FlashcardGenerator.convert_latex_to_display_format(back)
+                    # Keep LaTeX as-is for Claude Desktop display
+                    front = FlashcardGenerator.preserve_claude_latex(front)
+                    back = FlashcardGenerator.preserve_claude_latex(back)
                     
                     cards.append({
                         "front": front,
                         "back": back
                     })
-                    continue
+            else:
+                # Fallback: Split by double newlines or specific separators
+                sections = re.split(r"\n\s*\n|---", text.strip())
 
-                # Look for question/answer separated by newline
-                lines = section.split("\n")
-                if len(lines) >= 2:
-                    front = lines[0].strip()
-                    back = "\n".join(lines[1:]).strip()
-                    
-                    # Convert LaTeX to display format
-                    front = FlashcardGenerator.convert_latex_to_display_format(front)
-                    back = FlashcardGenerator.convert_latex_to_display_format(back)
-                    
-                    cards.append({"front": front, "back": back})
+                for section in sections:
+                    section = section.strip()
+                    if not section:
+                        continue
+
+                    # Look for question/answer separated by newline
+                    lines = section.split("\n")
+                    if len(lines) >= 2:
+                        front = lines[0].strip()
+                        back = "\n".join(lines[1:]).strip()
+                        
+                        # Keep LaTeX as-is for Claude Desktop display
+                        front = FlashcardGenerator.preserve_claude_latex(front)
+                        back = FlashcardGenerator.preserve_claude_latex(back)
+                        
+                        cards.append({"front": front, "back": back})
 
         elif card_type == "cloze":
             # Split by double newlines for multiple cloze cards
@@ -230,8 +247,8 @@ class FlashcardGenerator:
 
                 try:
                     cloze_text = FlashcardGenerator.create_anki_cloze_card(section)
-                    # Convert LaTeX to display format
-                    cloze_text = FlashcardGenerator.convert_latex_to_display_format(cloze_text)
+                    # Keep LaTeX as-is for Claude Desktop display
+                    cloze_text = FlashcardGenerator.preserve_claude_latex(cloze_text)
                     cards.append({"text": cloze_text})
                 except ValueError:
                     # If no cloze markers found, skip this section
@@ -751,11 +768,23 @@ def get_anki_connector(api_key: Optional[str] = None) -> AnkiConnector:
 
 @mcp.tool
 def create_flashcards(content: str, card_type: str = "front-back") -> str:
-    """Convert text into flashcards
+    """Convert text into flashcards with LaTeX math rendering for Claude Desktop
     
     Args:
-        content: Text content to convert to flashcards
+        content: Text content to convert to flashcards. Use Q: A: format or separate lines.
         card_type: Type of flashcard - "front-back" or "cloze"
+    
+    Examples:
+        Basic card:
+        Q: What is the sigmoid function?
+        A: $\\sigma(x) = \\frac{1}{1 + e^{-x}}$
+        
+        Markov's inequality:
+        Q: What is Markov's inequality?
+        A: For any non-negative random variable X and constant a > 0: $$P(X \\geq a) \\leq \\frac{E[X]}{a}$$
+        
+        Cloze card (use card_type="cloze"):
+        The probability formula is {{P(X ≥ a) ≤ E[X]/a}}
     """
     try:
         cards = FlashcardGenerator.parse_text_to_cards(content, card_type)
@@ -781,10 +810,10 @@ def create_flashcards(content: str, card_type: str = "front-back") -> str:
 
 @mcp.tool
 def upload_to_anki(content: str, deck_name: str = "MCP Generated Cards", card_type: str = "front-back", tags: List[str] = None, anki_api_key: Optional[str] = None) -> str:
-    """Upload generated flashcards directly to Anki
+    """Upload generated flashcards directly to Anki with proper MathJax conversion
     
     Args:
-        content: Text content to convert and upload to Anki
+        content: Text content to convert and upload to Anki (LaTeX will be converted to MathJax format)
         deck_name: Name of the Anki deck to upload to
         card_type: Type of flashcard - "front-back" or "cloze"  
         tags: Tags to add to the cards
@@ -794,8 +823,16 @@ def upload_to_anki(content: str, deck_name: str = "MCP Generated Cards", card_ty
         tags = ["mcp-generated"]
     
     try:
-        # Generate flashcards from content
+        # Generate flashcards from content (preserves LaTeX initially)
         cards = FlashcardGenerator.parse_text_to_cards(content, card_type)
+        
+        # Convert LaTeX to Anki MathJax format for each card
+        for card in cards:
+            if "front" in card:
+                card["front"] = FlashcardGenerator.convert_to_anki_mathjax(card["front"])
+                card["back"] = FlashcardGenerator.convert_to_anki_mathjax(card["back"])
+            elif "text" in card:
+                card["text"] = FlashcardGenerator.convert_to_anki_mathjax(card["text"])
         
         if not cards:
             return "No flashcards could be generated from the provided content"
@@ -877,7 +914,7 @@ def preview_cards(content: str, card_type: str = "front-back", title: str = "Fla
         tags = []
         
     try:
-        # Generate flashcards from content
+        # Generate flashcards from content (preserves LaTeX for web MathJax)
         cards = FlashcardGenerator.parse_text_to_cards(content, card_type)
         
         if not cards:
