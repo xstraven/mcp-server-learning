@@ -240,6 +240,393 @@ class FlashcardGenerator:
         return cards
 
 
+class HTMLCardRenderer:
+    """Renders flashcards as HTML for preview purposes."""
+
+    @staticmethod
+    def get_base_css() -> str:
+        """Get base CSS styles for flashcard rendering."""
+        return """
+        <style>
+        .flashcard-container {
+            max-width: 600px;
+            margin: 20px auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .flashcard {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin: 16px 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card-front, .card-back {
+            padding: 24px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .card-front {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 18px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .card-back {
+            background: white;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #34495e;
+        }
+        .cloze-card {
+            padding: 24px;
+            background: white;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+        .cloze-blank {
+            background: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .diagram-container {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 16px 0;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .diagram-code {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 16px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .math {
+            font-style: italic;
+            color: #8e44ad;
+        }
+        .tag {
+            display: inline-block;
+            background: #e8f4f8;
+            color: #2980b9;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin: 2px;
+            font-weight: 500;
+        }
+        .tags-container {
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+        .preview-header {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 0;
+        }
+        .preview-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .preview-header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        </style>
+        """
+
+    @staticmethod
+    def get_mathjax_script() -> str:
+        """Get MathJax configuration script for LaTeX rendering."""
+        return """
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+                displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+        </script>
+        """
+
+    @staticmethod
+    def convert_latex_to_mathjax(text: str) -> str:
+        """Convert LaTeX syntax to MathJax-compatible format."""
+        # Convert display math
+        text = re.sub(
+            r"\\begin\{equation\}(.*?)\\end\{equation\}",
+            r"$$\1$$",
+            text,
+            flags=re.DOTALL,
+        )
+        text = re.sub(
+            r"\\begin\{align\}(.*?)\\end\{align\}",
+            r"$$\\begin{align}\1\\end{align}$$",
+            text,
+            flags=re.DOTALL,
+        )
+
+        # Convert inline math (be careful not to double-convert)
+        text = re.sub(r"(?<!\\)\$(?!\$)(.*?)(?<!\\)\$(?!\$)", r"$\1$", text)
+
+        # Convert common LaTeX commands
+        text = text.replace("\\LaTeX", "$\\LaTeX$")
+        text = text.replace("\\TeX", "$\\TeX$")
+
+        # Clean up escaped characters for HTML
+        text = text.replace("\\&", "&")
+        text = text.replace("\\%", "%")
+        text = text.replace("\\$", "$")
+        text = text.replace("\\#", "#")
+        text = text.replace("\\_", "_")
+        text = text.replace("\\{", "{")
+        text = text.replace("\\}", "}")
+
+        return text
+
+    @staticmethod
+    def render_front_back_card(
+        front: str, back: str, tags: List[str] = None
+    ) -> str:
+        """Render a front-back card as HTML."""
+        if tags is None:
+            tags = []
+
+        front_html = HTMLCardRenderer.convert_latex_to_mathjax(front)
+        back_html = HTMLCardRenderer.convert_latex_to_mathjax(back)
+
+        tags_html = ""
+        if tags:
+            tags_html = f"""
+            <div class="tags-container">
+                {''.join(f'<span class="tag">{tag}</span>' for tag in tags)}
+            </div>
+            """
+
+        return f"""
+        <div class="flashcard">
+            <div class="card-header">Front-Back Card</div>
+            <div class="card-front">{front_html}</div>
+            <div class="card-back">{back_html}</div>
+            {tags_html}
+        </div>
+        """
+
+    @staticmethod
+    def render_cloze_card(text: str, tags: List[str] = None) -> str:
+        """Render a cloze deletion card as HTML."""
+        if tags is None:
+            tags = []
+
+        # Convert cloze deletions to HTML
+        cloze_html = re.sub(
+            r"\{\{c\d+::(.*?)\}\}", r'<span class="cloze-blank">\1</span>', text
+        )
+        cloze_html = HTMLCardRenderer.convert_latex_to_mathjax(cloze_html)
+
+        tags_html = ""
+        if tags:
+            tags_html = f"""
+            <div class="tags-container">
+                {''.join(f'<span class="tag">{tag}</span>' for tag in tags)}
+            </div>
+            """
+
+        return f"""
+        <div class="flashcard">
+            <div class="card-header">Cloze Deletion Card</div>
+            <div class="cloze-card">{cloze_html}</div>
+            {tags_html}
+        </div>
+        """
+
+    @staticmethod
+    def render_diagram_card(
+        diagram: str,
+        explanation: str,
+        diagram_type: str = "ascii",
+        tags: List[str] = None,
+    ) -> str:
+        """Render a diagram card as HTML."""
+        if tags is None:
+            tags = []
+
+        # Process diagram based on type
+        if diagram_type == "ascii":
+            diagram_html = f'<div class="diagram-code">{diagram}</div>'
+        elif diagram_type == "tikz":
+            # For TikZ, show the code for now (could be enhanced with TikZ to SVG conversion)
+            diagram_html = f'<div class="diagram-code">{diagram}</div><p><em>TikZ Diagram Code</em></p>'
+        else:
+            diagram_html = f'<div class="diagram-code">{diagram}</div>'
+
+        explanation_html = HTMLCardRenderer.convert_latex_to_mathjax(
+            explanation
+        )
+
+        tags_html = ""
+        if tags:
+            tags_html = f"""
+            <div class="tags-container">
+                {''.join(f'<span class="tag">{tag}</span>' for tag in tags)}
+            </div>
+            """
+
+        return f"""
+        <div class="flashcard">
+            <div class="card-header">Diagram Card</div>
+            <div class="card-front">
+                <div class="diagram-container">
+                    {diagram_html}
+                </div>
+            </div>
+            <div class="card-back">{explanation_html}</div>
+            {tags_html}
+        </div>
+        """
+
+    @staticmethod
+    def render_cards_preview(
+        cards_data: List[Dict[str, Any]], title: str = "Flashcard Preview"
+    ) -> str:
+        """Render multiple cards as a complete HTML document."""
+        cards_html = []
+
+        for card_data in cards_data:
+            card_type = card_data.get("card_type", "front-back")
+            tags = card_data.get("tags", [])
+
+            if card_type == "front-back":
+                # Handle both LaTeX format and simple dict format
+                if isinstance(card_data.get("data"), dict):
+                    # Handle dict format from parse_text_to_cards
+                    front = card_data["data"].get("front", "No content")
+                    back = card_data["data"].get("back", "")
+                else:
+                    # Handle string content format
+                    content = card_data.get("content", card_data.get("data", ""))
+                    # Simple parsing - could be enhanced
+                    parts = (
+                        content.replace("\\begin{flashcard}", "")
+                        .replace("\\end{flashcard}", "")
+                        .strip()
+                        .split("\n", 1)
+                    )
+                    front = parts[0].strip() if parts else "No content"
+                    back = parts[1].strip() if len(parts) > 1 else ""
+
+                cards_html.append(
+                    HTMLCardRenderer.render_front_back_card(front, back, tags)
+                )
+
+            elif card_type == "cloze":
+                # Handle both LaTeX format and simple dict format
+                if isinstance(card_data.get("data"), dict):
+                    # Handle dict format from parse_text_to_cards
+                    content = card_data["data"].get("text", "")
+                else:
+                    # Handle string content format
+                    content = card_data.get("content", card_data.get("data", ""))
+                    # Clean up cloze content
+                    content = (
+                        content.replace("\\begin{clozecard}", "")
+                        .replace("\\end{clozecard}", "")
+                        .strip()
+                    )
+                    # Convert LaTeX cloze to standard format
+                    content = re.sub(
+                        r"\\\\cloze\{([^}]+)\}", r"{{c1::\1}}", content
+                    )
+
+                cards_html.append(
+                    HTMLCardRenderer.render_cloze_card(content, tags)
+                )
+
+            elif card_type == "diagram":
+                # Extract diagram and explanation
+                content = card_data.get("content", card_data.get("data", ""))
+                content = (
+                    content.replace("\\begin{flashcard}{Diagram}", "")
+                    .replace("\\end{flashcard}", "")
+                    .strip()
+                )
+
+                # Split by vspace
+                parts = content.split("\\vspace{1em}")
+                diagram = parts[0].strip() if parts else "No diagram"
+                explanation = (
+                    parts[1].strip() if len(parts) > 1 else "No explanation"
+                )
+
+                # Detect diagram type
+                diagram_type = "tikz" if "tikzpicture" in diagram else "ascii"
+
+                cards_html.append(
+                    HTMLCardRenderer.render_diagram_card(
+                        diagram, explanation, diagram_type, tags
+                    )
+                )
+
+        full_html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{title}</title>
+            {HTMLCardRenderer.get_base_css()}
+            {HTMLCardRenderer.get_mathjax_script()}
+        </head>
+        <body>
+            <div class="preview-header">
+                <h1>{title}</h1>
+                <p>{len(cards_data)} card{"s" if len(cards_data) != 1 else ""} generated</p>
+            </div>
+            <div class="flashcard-container">
+                {''.join(cards_html)}
+            </div>
+        </body>
+        </html>
+        """
+
+        return full_html
+
+
 class AnkiCardManager:
     """Manages conversion and upload of flashcards to Anki."""
 
@@ -477,14 +864,18 @@ Available Note Types ({len(models)}):
 
 
 @mcp.tool
-def preview_cards(content: str, card_type: str = "front-back", title: str = "Flashcard Preview") -> str:
-    """Generate HTML preview of flashcards
+def preview_cards(content: str, card_type: str = "front-back", title: str = "Flashcard Preview", tags: List[str] = None) -> str:
+    """Generate HTML preview of flashcards with MathJax LaTeX rendering
     
     Args:
         content: Text content to convert to flashcards and preview
         card_type: Type of flashcard - "front-back" or "cloze"
         title: Title for the preview document
+        tags: Tags to display on the cards
     """
+    if tags is None:
+        tags = []
+        
     try:
         # Generate flashcards from content
         cards = FlashcardGenerator.parse_text_to_cards(content, card_type)
@@ -492,49 +883,18 @@ def preview_cards(content: str, card_type: str = "front-back", title: str = "Fla
         if not cards:
             return "No flashcards could be generated from the provided content"
         
-        # Generate simple HTML preview
-        html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>{title}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; }}
-        .card {{ border: 1px solid #ccc; margin: 20px 0; padding: 20px; border-radius: 8px; }}
-        .card-front {{ font-weight: bold; margin-bottom: 10px; }}
-        .card-back {{ color: #666; }}
-        .cloze {{ background: #e3f2fd; padding: 20px; }}
-        .cloze-blank {{ background: #2196f3; color: white; padding: 2px 6px; border-radius: 3px; }}
-    </style>
-</head>
-<body>
-    <h1>{title}</h1>
-    <p>Generated {len(cards)} flashcard(s)</p>
-"""
+        # Prepare cards data for advanced rendering
+        cards_data = []
+        for card in cards:
+            cards_data.append({
+                "data": card,
+                "card_type": card_type,
+                "tags": tags,
+            })
         
-        for i, card in enumerate(cards, 1):
-            if card_type == "front-back":
-                html += f"""
-    <div class="card">
-        <h3>Card {i}</h3>
-        <div class="card-front">Q: {card['front']}</div>
-        <div class="card-back">A: {card['back']}</div>
-    </div>
-"""
-            elif card_type == "cloze":
-                # Convert Anki cloze format for display
-                display_text = re.sub(r'\{\{c\d+::([^}]+)\}\}', r'<span class="cloze-blank">\1</span>', card['text'])
-                html += f"""
-    <div class="card">
-        <h3>Cloze Card {i}</h3>
-        <div class="cloze">{display_text}</div>
-    </div>
-"""
-        
-        html += """
-</body>
-</html>
-"""
-        return html
+        # Generate professional HTML preview with MathJax
+        html_preview = HTMLCardRenderer.render_cards_preview(cards_data, title)
+        return html_preview
     
     except Exception as e:
         return f"Error generating preview: {str(e)}"

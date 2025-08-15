@@ -17,7 +17,6 @@ dependencies = [
 ]
 
 [project.scripts]
-mcp-server-learning = "mcp_server_learning.flashcard_server:main"
 zotero-mcp-server = "mcp_server_learning.zotero_mcp_server:main"
 fastmcp-zotero-server = "mcp_server_learning.fastmcp_zotero_server:main"
 fastmcp-flashcard-server = "mcp_server_learning.fastmcp_flashcard_server:main"

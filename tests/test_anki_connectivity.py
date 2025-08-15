@@ -4,7 +4,7 @@ import pytest
 import requests
 import json
 from unittest.mock import Mock, patch, MagicMock
-from src.mcp_server_learning.flashcard_server import AnkiConnector
+from mcp_server_learning.fastmcp_flashcard_server import AnkiConnector
 
 
 class TestAnkiConnectivity:
