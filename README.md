@@ -32,18 +32,23 @@ uv pip install -e .
 
 ## Usage
 
-### Running the Server
+### Running the Servers
 
-The server can be run directly:
-
-```bash
-mcp-server-learning
-```
-
-Or using uv:
+FastMCP entrypoints are provided for each server:
 
 ```bash
-uv run mcp-server-learning
+# Flashcards / Anki
+uv run fastmcp-flashcard-server
+
+# Zotero
+export ZOTERO_API_KEY=... \
+       ZOTERO_LIBRARY_ID=... \
+       ZOTERO_LIBRARY_TYPE=user   # or group
+uv run fastmcp-zotero-server
+
+# Obsidian
+export OBSIDIAN_VAULT_PATH="/path/to/your/Obsidian/Vault"
+uv run fastmcp-obsidian-server
 ```
 
 ### Available Tools
@@ -144,7 +149,7 @@ Generate flashcards from Zotero items or collections.
 
 ## Zotero MCP Server
 
-A standalone MCP server for interacting with Zotero libraries using the pyzotero package.
+A FastMCP server for interacting with Zotero libraries using the pyzotero package.
 
 ### Available Tools
 
@@ -210,7 +215,7 @@ Get templates for creating different item types.
 
 ## Obsidian MCP Server
 
-A standalone MCP server for interacting with Obsidian vaults and markdown notes.
+A FastMCP server for interacting with Obsidian vaults and markdown notes.
 
 ### Available Tools
 
@@ -372,7 +377,7 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "learning": {
       "command": "uv",
-      "args": ["run", "mcp-server-learning"],
+      "args": ["run", "fastmcp-flashcard-server"],
       "cwd": "/path/to/mcp-server-learning"
     }
   }
@@ -380,19 +385,37 @@ Add to your Claude Desktop configuration:
 ```
 
 ### Zotero Server
-For the standalone Zotero server, add this to your Claude Desktop configuration:
+Configure the Zotero FastMCP server:
 
 ```json
 {
   "mcpServers": {
     "zotero": {
       "command": "uv",
-      "args": ["run", "zotero-mcp-server"],
+      "args": ["run", "fastmcp-zotero-server"],
       "cwd": "/path/to/mcp-server-learning",
       "env": {
         "ZOTERO_API_KEY": "your-zotero-api-key",
         "ZOTERO_LIBRARY_ID": "your-library-id", 
         "ZOTERO_LIBRARY_TYPE": "user"
+      }
+    }
+  }
+}
+```
+
+### Obsidian Server
+Configure the Obsidian FastMCP server:
+
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "uv",
+      "args": ["run", "fastmcp-obsidian-server"],
+      "cwd": "/path/to/mcp-server-learning",
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "/absolute/path/to/your/Obsidian/Vault"
       }
     }
   }
