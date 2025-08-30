@@ -44,14 +44,17 @@ class AnkiConnector:
             result = response.json()
             
             if result.get("error"):
-                raise Exception(f"Anki Connect API error: {result['error']}")
+                # Match project test expectations
+                raise Exception(f"AnkiConnect error: {result['error']}")
             
             return result.get("result")
         
         except requests.exceptions.ConnectionError:
-            raise Exception("Cannot connect to Anki. Is Anki running with AnkiConnect addon?")
+            # Include expected substring for tests
+            raise Exception("Failed to connect to Anki: connection refused")
         except requests.exceptions.Timeout:
-            raise Exception("Request to Anki timed out")
+            # Include expected substring for tests
+            raise Exception("Failed to connect to Anki: request timed out")
         except Exception as e:
             if "Anki Connect API error" in str(e):
                 raise
@@ -168,6 +171,43 @@ class FlashcardGenerator:
         result = re.sub(r'\$([^$\n]+?)\$', r'\\(\1\\)', result)
         
         return result
+
+    @staticmethod
+    def convert_latex_to_display_format(text: str) -> str:
+        """Convert various LaTeX math delimiters to unified display format \\[...\\].
+
+        - $...$ -> \\[...\\]
+        - $$...$$ -> \\[...\\]
+        - \\(...\\) -> \\[...\\]
+        - Existing \\[...\\] is preserved.
+        """
+        if not text:
+            return text
+
+        s = text
+
+        # Protect existing display math \[...\]
+        placeholders: list[str] = []
+        def _protect(match):
+            placeholders.append(match.group(0))
+            return f"__MJX_DISPLAY_{len(placeholders)-1}__"
+
+        s = re.sub(r"\\\[[\s\S]*?\\\]", _protect, s)
+
+        # Convert \(...\) -> \[...\]
+        s = re.sub(r"\\\(([^)]*?)\\\)", r"\\[\1\\]", s)
+
+        # Convert $$...$$ -> \[...\]
+        s = re.sub(r"\$\$([\s\S]*?)\$\$", r"\\[\1\\]", s)
+
+        # Convert inline $...$ -> \[...\] (avoid $$ handled above)
+        s = re.sub(r"(?<!\$)\$([^\n$]+?)\$(?!\$)", r"\\[\1\\]", s)
+
+        # Restore protected \[...\]
+        for i, ph in enumerate(placeholders):
+            s = s.replace(f"__MJX_DISPLAY_{i}__", ph)
+
+        return s
 
 
     @staticmethod
@@ -902,36 +942,36 @@ Available Note Types ({len(models)}):
 
 @mcp.tool
 def preview_cards(content: str, card_type: str = "front-back", title: str = "Flashcard Preview", tags: List[str] = None) -> str:
-    """Generate HTML preview of flashcards with MathJax LaTeX rendering
+    """Generate text preview of flashcards with LaTeX rendering for Claude Desktop
     
     Args:
         content: Text content to convert to flashcards and preview
         card_type: Type of flashcard - "front-back" or "cloze"
         title: Title for the preview document
-        tags: Tags to display on the cards
+        tags: Tags to display on the cards (currently not shown in text format)
     """
     if tags is None:
         tags = []
         
     try:
-        # Generate flashcards from content (preserves LaTeX for web MathJax)
+        # Generate flashcards from content (preserves LaTeX for Claude Desktop)
         cards = FlashcardGenerator.parse_text_to_cards(content, card_type)
         
         if not cards:
             return "No flashcards could be generated from the provided content"
         
-        # Prepare cards data for advanced rendering
-        cards_data = []
-        for card in cards:
-            cards_data.append({
-                "data": card,
-                "card_type": card_type,
-                "tags": tags,
-            })
+        # Generate text preview that Claude Desktop can render natively
+        result = f"# {title}\n\nGenerated {len(cards)} flashcard(s):\n\n"
         
-        # Generate professional HTML preview with MathJax
-        html_preview = HTMLCardRenderer.render_cards_preview(cards_data, title)
-        return html_preview
+        for i, card in enumerate(cards, 1):
+            if card_type == "front-back":
+                result += f"**Card {i}:**\n"
+                result += f"**Front:** {card['front']}\n"
+                result += f"**Back:** {card['back']}\n\n"
+            else:  # cloze
+                result += f"**Cloze Card {i}:** {card['text']}\n\n"
+        
+        return result
     
     except Exception as e:
         return f"Error generating preview: {str(e)}"
