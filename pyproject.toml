@@ -14,12 +14,15 @@ dependencies = [
     "PyYAML>=6.0",
     "pathlib>=1.0.1",
     "pyzotero>=1.5.18",
+    "sympy>=1.13",
+    "latex2sympy2>=1.9.0",
 ]
 
 [project.scripts]
 fastmcp-zotero-server = "mcp_server_learning.fastmcp_zotero_server:main"
 fastmcp-flashcard-server = "mcp_server_learning.fastmcp_flashcard_server:main"
 fastmcp-obsidian-server = "mcp_server_learning.fastmcp_obsidian_server:main"
+fastmcp-math-server = "mcp_server_learning.fastmcp_math_verification_server:main"
 
 [project.optional-dependencies]
 dev = [
