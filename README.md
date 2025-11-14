@@ -1,6 +1,6 @@
 # MCP Server Learning
 
-A Model Context Protocol (MCP) server designed to help with learning and educational tasks. Currently includes a comprehensive flashcard generation and management system.
+A Model Context Protocol (MCP) server designed to help with learning and educational tasks. Includes flashcard generation, Zotero integration, Obsidian connectivity, and mathematical verification tools.
 
 ## Features
 
@@ -13,6 +13,17 @@ The flashcard server provides tools for creating, managing, and exporting flashc
 - **Anki Integration**: Direct upload to Anki using AnkiConnect addon
 - **HTML Preview**: Generate beautiful HTML previews of your flashcards
 - **Diagram Support**: Handle ASCII art, TikZ diagrams, and flowcharts
+
+### Mathematical Verification Server
+
+A comprehensive server for verifying mathematical expressions and proofs:
+
+- **LaTeX Input**: Native support for LaTeX mathematical notation
+- **Multi-Step Proof Verification**: Verify complete proofs step-by-step
+- **Calculus Support**: Derivatives, integrals, limits, and series
+- **Linear Algebra**: Matrix operations and vector spaces
+- **Expression Simplification**: Automatically simplify complex expressions with step-by-step explanations
+- **Identity Checking**: Verify mathematical identities (Pythagorean, trigonometric, etc.)
 
 ## Installation
 
@@ -49,6 +60,9 @@ uv run fastmcp-zotero-server
 # Obsidian
 export OBSIDIAN_VAULT_PATH="/path/to/your/Obsidian/Vault"
 uv run fastmcp-obsidian-server
+
+# Mathematical Verification
+uv run fastmcp-math-server
 ```
 
 ### Available Tools
@@ -314,6 +328,131 @@ Generate flashcards from Obsidian notes.
 - `content_types`: Types of content to extract (`headers`, `definitions`, `lists`, `quotes`)
 - `card_type`: Type of flashcards to generate (`front-back`, `cloze`)
 
+## Mathematical Verification MCP Server
+
+A FastMCP server for verifying mathematical expressions and multi-step proofs using SymPy. Focused on calculus, analysis, and linear algebra with LaTeX input support.
+
+### Available Tools
+
+#### `verify_step`
+Verify a single mathematical step with proper justification.
+
+**Parameters:**
+- `expression` (required): Mathematical expression in LaTeX format (e.g., `\frac{d}{dx}(x^2)`)
+- `expected_result` (required): Expected result in LaTeX format (e.g., `2x`)
+- `assumptions`: Optional list of assumptions (e.g., `["x is real"]`)
+- `operation`: Type of operation - `"equality"`, `"derivative"`, `"integral"`, or `"limit"`
+
+**Examples:**
+```
+verify_step("x^2 + 2x + 1", "(x+1)^2", operation="equality")
+verify_step("x^2", "2x", operation="derivative")
+```
+
+#### `verify_proof`
+Verify a multi-step mathematical proof.
+
+**Parameters:**
+- `steps` (required): List of proof steps. Each step should contain:
+  - `expression`: The mathematical expression (LaTeX)
+  - `justification`: Reason for this step
+  - `result` (optional): Expected result after this step
+- `assumptions`: Optional list of assumptions about variables
+
+**Example:**
+```python
+steps = [
+    {
+        "expression": r"\int x dx",
+        "result": r"\frac{x^2}{2} + C",
+        "justification": "Power rule for integration"
+    },
+    {
+        "expression": r"\frac{d}{dx}(\frac{x^2}{2} + C)",
+        "result": "x",
+        "justification": "Differentiate with respect to x"
+    }
+]
+```
+
+#### `simplify_expression`
+Simplify a mathematical expression and optionally show steps.
+
+**Parameters:**
+- `expression` (required): Mathematical expression in LaTeX format
+- `show_steps`: Whether to show intermediate simplification steps (default: `true`)
+
+**Example:**
+```
+simplify_expression(r"\frac{x^2 - 1}{x - 1}", show_steps=True)
+```
+
+#### `verify_equivalence`
+Verify if two mathematical expressions are equivalent.
+
+**Parameters:**
+- `expr1` (required): First expression in LaTeX format
+- `expr2` (required): Second expression in LaTeX format
+- `assumptions`: Optional list of assumptions about variables
+
+**Example:**
+```
+verify_equivalence("x^2 - 1", "(x-1)(x+1)")
+```
+
+#### `check_identity`
+Check if a mathematical identity holds.
+
+**Parameters:**
+- `identity_expr` (required): Identity to check (e.g., `sin(x)^2 + cos(x)^2 - 1`)
+- `variable`: Variable in the identity (default: `'x'`)
+- `test_values`: Optional list of specific values to test
+
+**Example:**
+```
+check_identity(r"\sin^2(x) + \cos^2(x) - 1", variable="x")
+```
+
+#### `verify_derivative`
+Verify a derivative calculation.
+
+**Parameters:**
+- `expression` (required): Expression to differentiate (LaTeX format)
+- `variable` (required): Variable to differentiate with respect to
+- `expected_derivative` (required): Expected derivative result (LaTeX format)
+
+**Example:**
+```
+verify_derivative(r"\sin(x) \cos(x)", "x", r"\cos^2(x) - \sin^2(x)")
+```
+
+#### `verify_integral`
+Verify an integral calculation.
+
+**Parameters:**
+- `expression` (required): Expression to integrate (LaTeX format)
+- `variable` (required): Variable to integrate with respect to
+- `expected_integral` (required): Expected integral result (LaTeX format)
+- `is_definite`: Whether this is a definite integral (default: `false`)
+- `lower_limit`: Lower limit for definite integral (LaTeX format or number)
+- `upper_limit`: Upper limit for definite integral (LaTeX format or number)
+
+**Examples:**
+```
+verify_integral("x", "x", r"\frac{x^2}{2} + C", is_definite=False)
+verify_integral("x", "x", r"\frac{1}{2}", is_definite=True, lower_limit="0", upper_limit="1")
+```
+
+### LaTeX Input Format
+
+The server accepts standard LaTeX mathematical notation:
+- **Inline math**: `x^2`, `\frac{1}{2}`, `\sin(x)`
+- **Functions**: `\sin(x)`, `\cos(x)`, `\ln(x)`, `\exp(x)`
+- **Fractions**: `\frac{numerator}{denominator}`
+- **Powers**: `x^2`, `e^{x}`
+- **Greek letters**: `\alpha`, `\beta`, `\pi`
+- **Special symbols**: `\cdot` (multiplication), `\int` (integral), `\frac{d}{dx}` (derivative)
+
 ## Integration Setup
 
 ### Anki Integration
@@ -461,6 +600,24 @@ For the standalone Obsidian server, add this to your Claude Desktop configuratio
 You need to set this environment variable for the Obsidian server:
 
 - **OBSIDIAN_VAULT_PATH**: Full path to your Obsidian vault directory (the folder containing your .md files and .obsidian folder)
+
+### Mathematical Verification Server
+
+Configure the math verification server in Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "math-verification": {
+      "command": "uv",
+      "args": ["run", "fastmcp-math-server"],
+      "cwd": "/path/to/mcp-server-learning"
+    }
+  }
+}
+```
+
+This server requires no environment variables - it's ready to use immediately after installation.
 
 ## Contributing
 
