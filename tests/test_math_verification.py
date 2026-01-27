@@ -12,13 +12,14 @@ Tests cover:
 """
 
 import pytest
+import sympy as sp
+from sympy import E, cos, exp, log, pi, sin, symbols
+
 from mcp_server_learning.fastmcp_math_verification_server import (
     LaTeXParser,
-    SymPyVerifier,
     ProofStepValidator,
+    SymPyVerifier,
 )
-import sympy as sp
-from sympy import symbols, sin, cos, exp, log, pi, E
 
 
 class TestLaTeXParser:
@@ -27,35 +28,35 @@ class TestLaTeXParser:
     def test_parse_simple_expression(self):
         """Test parsing simple algebraic expressions."""
         result = LaTeXParser.parse("x^2 + 2x + 1")
-        x = symbols('x')
-        expected = x**2 + 2*x + 1
+        x = symbols("x")
+        expected = x**2 + 2 * x + 1
         assert sp.simplify(result - expected) == 0
 
     def test_parse_fraction(self):
         """Test parsing fractions."""
         result = LaTeXParser.parse(r"\frac{x^2}{2}")
-        x = symbols('x')
+        x = symbols("x")
         expected = x**2 / 2
         assert sp.simplify(result - expected) == 0
 
     def test_parse_trigonometric(self):
         """Test parsing trigonometric functions."""
         result = LaTeXParser.parse(r"\sin(x) + \cos(x)")
-        x = symbols('x')
+        x = symbols("x")
         expected = sin(x) + cos(x)
         assert sp.simplify(result - expected) == 0
 
     def test_parse_exponential(self):
         """Test parsing exponential expressions."""
         result = LaTeXParser.parse(r"e^{x}")
-        x = symbols('x')
+        x = symbols("x")
         expected = exp(x)
         assert result == expected
 
     def test_parse_with_display_delimiters(self):
         """Test parsing expressions with display math delimiters."""
         result = LaTeXParser.parse(r"$$x^2 + 1$$")
-        x = symbols('x')
+        x = symbols("x")
         expected = x**2 + 1
         assert sp.simplify(result - expected) == 0
 
@@ -127,8 +128,7 @@ class TestSymPyVerifier:
     def test_verify_definite_integral(self):
         """Test verifying definite integral."""
         verifier = SymPyVerifier()
-        result = verifier.verify_integral("x", "x", "1/2",
-                                         definite=True, limits=(0, 1))
+        result = verifier.verify_integral("x", "x", "1/2", definite=True, limits=(0, 1))
 
         assert result["is_valid"] == True
 
@@ -163,7 +163,7 @@ class TestSymPyVerifier:
 
         # The simplified form should be x + 1
         simplified_expr = sp.sympify(result["simplified"])
-        x = symbols('x')
+        x = symbols("x")
         assert sp.simplify(simplified_expr - (x + 1)) == 0
 
 
@@ -178,13 +178,9 @@ class TestProofStepValidator:
             {
                 "expression": "x^2 - 1",
                 "result": "(x-1)(x+1)",
-                "justification": "Factoring difference of squares"
+                "justification": "Factoring difference of squares",
             },
-            {
-                "expression": "(x-1)(x+1)",
-                "result": "x^2 - 1",
-                "justification": "Expanding"
-            }
+            {"expression": "(x-1)(x+1)", "result": "x^2 - 1", "justification": "Expanding"},
         ]
 
         result = validator.validate_proof(steps)
@@ -199,16 +195,12 @@ class TestProofStepValidator:
 
         # Two-step proof: start with expression, then show derivative
         steps = [
-            {
-                "expression": "x^2",
-                "result": "x^2",
-                "justification": "Starting expression"
-            },
+            {"expression": "x^2", "result": "x^2", "justification": "Starting expression"},
             {
                 "expression": r"2 \cdot x",
                 "result": r"2 \cdot x",
-                "justification": "Differentiate with respect to x"
-            }
+                "justification": "Differentiate with respect to x",
+            },
         ]
 
         result = validator.validate_proof(steps)
@@ -226,13 +218,9 @@ class TestProofStepValidator:
             {
                 "expression": r"2 \cdot x",
                 "result": r"2 \cdot x",
-                "justification": "Starting expression"
+                "justification": "Starting expression",
             },
-            {
-                "expression": "x^2",
-                "result": "x^2",
-                "justification": "Integrate with respect to x"
-            }
+            {"expression": "x^2", "result": "x^2", "justification": "Integrate with respect to x"},
         ]
 
         result = validator.validate_proof(steps)
@@ -249,7 +237,7 @@ class TestProofStepValidator:
             {
                 "expression": "x^2",
                 "result": "3*x",  # Wrong derivative
-                "justification": "Differentiate with respect to x"
+                "justification": "Differentiate with respect to x",
             }
         ]
 
@@ -267,9 +255,7 @@ class TestCalculusVerification:
         verifier = SymPyVerifier()
         # d/dx[sin(x)/x] = (x*cos(x) - sin(x))/x^2
         result = verifier.verify_derivative(
-            r"\frac{\sin(x)}{x}",
-            "x",
-            r"\frac{x \cdot \cos(x) - \sin(x)}{x^2}"
+            r"\frac{\sin(x)}{x}", "x", r"\frac{x \cdot \cos(x) - \sin(x)}{x^2}"
         )
 
         assert result["is_valid"] == True
@@ -292,12 +278,7 @@ class TestCalculusVerification:
         """Test integration by parts result."""
         verifier = SymPyVerifier()
         # ∫x*e^x dx = x*e^x - e^x + C
-        result = verifier.verify_integral(
-            "x*e^x",
-            "x",
-            "x*e^x - e^x",
-            definite=False
-        )
+        result = verifier.verify_integral("x*e^x", "x", "x*e^x - e^x", definite=False)
 
         assert result["is_valid"] == True
 
@@ -320,14 +301,11 @@ class TestLinearAlgebraVerification:
         verifier = SymPyVerifier()
 
         # Create symbolic expression for 2x2 determinant
-        a, b, c, d = symbols('a b c d')
-        det_expr = a*d - b*c
+        a, b, c, d = symbols("a b c d")
+        det_expr = a * d - b * c
 
         # Verify it's the same
-        result = verifier.verify_equality(
-            "a*d - b*c",
-            "a*d - b*c"
-        )
+        result = verifier.verify_equality("a*d - b*c", "a*d - b*c")
 
         assert result["is_valid"] == True
 
@@ -342,7 +320,9 @@ class TestIdentityVerification:
 
         assert result["is_valid"] == True
 
-    @pytest.mark.skip(reason="Complex exponential parsing requires special handling - not critical for main functionality")
+    @pytest.mark.skip(
+        reason="Complex exponential parsing requires special handling - not critical for main functionality"
+    )
     def test_exponential_identity(self):
         """Test exponential identity: e^(i*pi) + 1 = 0."""
         # This is Euler's identity
@@ -352,10 +332,10 @@ class TestIdentityVerification:
     def test_logarithm_identity(self):
         """Test logarithm identity: log(a*b) = log(a) + log(b)."""
         verifier = SymPyVerifier()
-        a, b = symbols('a b', positive=True, real=True)
+        a, b = symbols("a b", positive=True, real=True)
 
         # This requires assumptions to be valid
-        expr1 = sp.log(a*b)
+        expr1 = sp.log(a * b)
         expr2 = sp.log(a) + sp.log(b)
 
         # Expand the log
@@ -394,6 +374,168 @@ class TestEdgeCases:
         result = verifier.verify_integral("0", "x", "0", definite=False)
 
         assert result["is_valid"] == True
+
+
+class TestMCPToolFunctions:
+    """Test the MCP tool functions for mathematical verification."""
+
+    def test_verify_step_equality(self):
+        """Test verify_step tool with equality operation."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+
+        result = verify_step.fn("x^2 - 1", "(x-1)(x+1)", operation="equality")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+        assert "successful" in result["message"].lower()
+
+    def test_verify_step_derivative(self):
+        """Test verify_step tool with derivative operation."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+
+        result = verify_step.fn("x^2", "2*x", operation="derivative")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+
+    def test_verify_step_integral(self):
+        """Test verify_step tool with integral operation."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+
+        result = verify_step.fn("x", "x^2/2", operation="integral")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+
+    def test_verify_step_unknown_operation(self):
+        """Test verify_step tool with unknown operation."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+
+        result = verify_step.fn("x", "x", operation="unknown")
+
+        assert result["success"] is False
+        assert "Unknown operation" in result["message"]
+
+    def test_verify_step_failed(self):
+        """Test verify_step tool with incorrect result."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+
+        result = verify_step.fn("x^2", "3*x", operation="derivative")
+
+        assert result["success"] is True  # Tool succeeded, verification failed
+        assert result["data"]["is_valid"] is False
+        assert "failed" in result["message"].lower()
+
+    def test_verify_proof_tool(self):
+        """Test verify_proof tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_proof
+
+        steps = [{"expression": "x^2 - 1", "result": "(x-1)(x+1)", "justification": "Factoring"}]
+        result = verify_proof.fn(steps)
+
+        assert result["success"] is True
+        assert result["data"]["total_steps"] == 1
+        assert "valid" in result["message"].lower()
+
+    def test_simplify_expression_tool(self):
+        """Test simplify_expression tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import simplify_expression
+
+        result = simplify_expression.fn("x^2 - 1", show_steps=True)
+
+        assert result["success"] is True
+        assert "original" in result["data"]
+        assert "simplified" in result["data"]
+        assert "steps" in result["data"]
+
+    def test_simplify_expression_no_steps(self):
+        """Test simplify_expression tool without steps."""
+        from mcp_server_learning.fastmcp_math_verification_server import simplify_expression
+
+        result = simplify_expression.fn("x^2 + 1", show_steps=False)
+
+        assert result["success"] is True
+        assert "simplified" in result["data"]
+
+    def test_verify_equivalence_tool(self):
+        """Test verify_equivalence tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_equivalence
+
+        result = verify_equivalence.fn("x^2 - 1", "(x-1)(x+1)")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+        assert "equivalent" in result["message"].lower()
+
+    def test_verify_equivalence_not_equivalent(self):
+        """Test verify_equivalence tool with non-equivalent expressions."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_equivalence
+
+        result = verify_equivalence.fn("x^2", "x^3")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is False
+        assert "not equivalent" in result["message"].lower()
+
+    def test_check_identity_tool(self):
+        """Test check_identity tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import check_identity
+
+        result = check_identity.fn("sin(x)^2 + cos(x)^2 - 1")
+
+        assert result["success"] is True
+        assert result["data"]["is_identity"] is True
+        assert "holds" in result["message"].lower()
+
+    def test_check_identity_not_identity(self):
+        """Test check_identity tool with non-identity."""
+        from mcp_server_learning.fastmcp_math_verification_server import check_identity
+
+        result = check_identity.fn("x^2 + 1")
+
+        assert result["success"] is True
+        assert result["data"]["is_identity"] is False
+
+    def test_verify_derivative_tool(self):
+        """Test verify_derivative tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_derivative
+
+        result = verify_derivative.fn("x^2", "x", "2*x")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+        assert "correct" in result["message"].lower()
+
+    def test_verify_derivative_incorrect(self):
+        """Test verify_derivative tool with wrong result."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_derivative
+
+        result = verify_derivative.fn("x^2", "x", "x")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is False
+        assert "incorrect" in result["message"].lower()
+
+    def test_verify_integral_tool(self):
+        """Test verify_integral tool function."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_integral
+
+        result = verify_integral.fn("x", "x", "x^2/2")
+
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
+        assert "correct" in result["message"].lower()
+
+    def test_verify_integral_definite(self):
+        """Test verify_integral tool with definite integral."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_integral
+
+        result = verify_integral.fn(
+            "x", "x", "1/2", is_definite=True, lower_limit="0", upper_limit="1"
+        )
+
+        assert result["success"] is True
+        assert result["data"]["definite"] is True
 
 
 if __name__ == "__main__":

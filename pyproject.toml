@@ -27,6 +27,7 @@ fastmcp-math-server = "mcp_server_learning.fastmcp_math_verification_server:main
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.1",
+    "pytest-cov>=6.0.0",
     "black>=24.0.0",
     "isort>=5.13.0",
     "mypy>=1.8.0",
@@ -52,5 +53,8 @@ disallow_untyped_defs = true
 
 [dependency-groups]
 dev = [
+    "black>=25.1.0",
+    "isort>=6.0.1",
     "pytest>=8.4.1",
+    "pytest-cov>=6.0.0",
 ]

@@ -6,16 +6,37 @@ A server for verifying mathematical expressions and multi-step proofs using SymP
 Focused on calculus, analysis, and linear algebra with LaTeX input support.
 """
 
-import sys
 import re
-from typing import Dict, List, Any, Optional, Union, Tuple
-from fastmcp import FastMCP
-import sympy as sp
-from sympy import symbols, Symbol, Expr, Matrix, simplify, expand, factor, cancel
-from sympy import diff, integrate, limit, series
-from sympy import sin, cos, tan, exp, log, sqrt, pi, E, I, oo
-from sympy.parsing.latex import parse_latex
+import sys
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import sympy as sp
+from fastmcp import FastMCP
+from sympy import (
+    E,
+    Expr,
+    I,
+    Matrix,
+    Symbol,
+    cancel,
+    cos,
+    diff,
+    exp,
+    expand,
+    factor,
+    integrate,
+    limit,
+    log,
+    oo,
+    pi,
+    series,
+    simplify,
+    sin,
+    sqrt,
+    symbols,
+    tan,
+)
+from sympy.parsing.latex import parse_latex
 
 # Initialize FastMCP instance
 mcp = FastMCP("Mathematical Verification Server")
@@ -46,19 +67,19 @@ class LaTeXParser:
             latex_expr = latex_expr.strip()
 
             # Remove display math delimiters if present
-            latex_expr = re.sub(r'^\\\[|\\\]$', '', latex_expr)
-            latex_expr = re.sub(r'^\$\$|\$\$$', '', latex_expr)
-            latex_expr = re.sub(r'^\$|\$$', '', latex_expr)
+            latex_expr = re.sub(r"^\\\[|\\\]$", "", latex_expr)
+            latex_expr = re.sub(r"^\$\$|\$\$$", "", latex_expr)
+            latex_expr = re.sub(r"^\$|\$$", "", latex_expr)
 
             # Preprocess to ensure proper LaTeX function notation
             # Replace common function names with LaTeX commands if not already present
             function_replacements = {
-                r'\bsin\b': r'\\sin',
-                r'\bcos\b': r'\\cos',
-                r'\btan\b': r'\\tan',
-                r'\blog\b': r'\\ln',  # Assume natural log
-                r'\bexp\b': r'\\exp',
-                r'\bsqrt\b': r'\\sqrt',
+                r"\bsin\b": r"\\sin",
+                r"\bcos\b": r"\\cos",
+                r"\btan\b": r"\\tan",
+                r"\blog\b": r"\\ln",  # Assume natural log
+                r"\bexp\b": r"\\exp",
+                r"\bsqrt\b": r"\\sqrt",
             }
 
             for pattern, replacement in function_replacements.items():
@@ -69,6 +90,7 @@ class LaTeXParser:
             # Try latex2sympy2 first as it's more robust for function notation
             try:
                 from latex2sympy2 import latex2sympy
+
                 result = latex2sympy(latex_expr)
                 return result
             except ImportError:
@@ -87,7 +109,9 @@ class LaTeXParser:
             raise ValueError(f"Error parsing LaTeX: {str(e)}")
 
     @staticmethod
-    def parse_with_context(latex_expr: str, assumptions: List[str] = None) -> Tuple[Union[Expr, Matrix], Dict[Symbol, Any]]:
+    def parse_with_context(
+        latex_expr: str, assumptions: List[str] = None
+    ) -> Tuple[Union[Expr, Matrix], Dict[Symbol, Any]]:
         """Parse LaTeX with context about variable assumptions.
 
         Args:
@@ -107,7 +131,7 @@ class LaTeXParser:
         for assumption in assumptions:
             # Simple pattern matching for common assumptions
             # e.g., "x is real", "n is positive", "x > 0"
-            match = re.match(r'(\w+)\s+is\s+(\w+)', assumption)
+            match = re.match(r"(\w+)\s+is\s+(\w+)", assumption)
             if match:
                 var_name, property_name = match.groups()
                 if var_name in str(expr):
@@ -124,8 +148,9 @@ class SymPyVerifier:
         pass
 
     @staticmethod
-    def verify_equality(expr1: Union[str, Expr], expr2: Union[str, Expr],
-                       assumptions: List[str] = None) -> Dict[str, Any]:
+    def verify_equality(
+        expr1: Union[str, Expr], expr2: Union[str, Expr], assumptions: List[str] = None
+    ) -> Dict[str, Any]:
         """Verify if two expressions are mathematically equal.
 
         Args:
@@ -153,19 +178,22 @@ class SymPyVerifier:
                 "expr2": str(expr2),
                 "difference": str(difference),
                 "simplified_difference": str(simplify(difference)),
-                "explanation": "Expressions are equal" if is_equal else f"Expressions differ by: {difference}"
+                "explanation": (
+                    "Expressions are equal" if is_equal else f"Expressions differ by: {difference}"
+                ),
             }
 
         except Exception as e:
             return {
                 "is_valid": False,
                 "error": str(e),
-                "explanation": f"Verification failed: {str(e)}"
+                "explanation": f"Verification failed: {str(e)}",
             }
 
     @staticmethod
-    def verify_derivative(expr: Union[str, Expr], variable: str,
-                         expected_result: Union[str, Expr]) -> Dict[str, Any]:
+    def verify_derivative(
+        expr: Union[str, Expr], variable: str, expected_result: Union[str, Expr]
+    ) -> Dict[str, Any]:
         """Verify a derivative computation.
 
         Args:
@@ -198,21 +226,28 @@ class SymPyVerifier:
                 "computed_derivative": str(computed_derivative),
                 "expected_derivative": str(expected_result),
                 "difference": str(difference),
-                "explanation": "Derivative is correct" if is_correct else f"Derivative differs by: {difference}"
+                "explanation": (
+                    "Derivative is correct"
+                    if is_correct
+                    else f"Derivative differs by: {difference}"
+                ),
             }
 
         except Exception as e:
             return {
                 "is_valid": False,
                 "error": str(e),
-                "explanation": f"Derivative verification failed: {str(e)}"
+                "explanation": f"Derivative verification failed: {str(e)}",
             }
 
     @staticmethod
-    def verify_integral(expr: Union[str, Expr], variable: str,
-                       expected_result: Union[str, Expr],
-                       definite: bool = False,
-                       limits: Tuple[Any, Any] = None) -> Dict[str, Any]:
+    def verify_integral(
+        expr: Union[str, Expr],
+        variable: str,
+        expected_result: Union[str, Expr],
+        definite: bool = False,
+        limits: Tuple[Any, Any] = None,
+    ) -> Dict[str, Any]:
         """Verify an integral computation.
 
         Args:
@@ -248,12 +283,20 @@ class SymPyVerifier:
                 difference = simplify(derivative_computed - derivative_expected)
                 is_correct = difference == 0
 
-                explanation = "Integral is correct (derivatives match)" if is_correct else f"Integrals differ (derivative difference: {difference})"
+                explanation = (
+                    "Integral is correct (derivatives match)"
+                    if is_correct
+                    else f"Integrals differ (derivative difference: {difference})"
+                )
             else:
                 # For definite integrals, compare values directly
                 difference = simplify(computed_integral - expected_result)
                 is_correct = difference == 0
-                explanation = "Definite integral is correct" if is_correct else f"Integral differs by: {difference}"
+                explanation = (
+                    "Definite integral is correct"
+                    if is_correct
+                    else f"Integral differs by: {difference}"
+                )
 
             return {
                 "is_valid": is_correct,
@@ -263,21 +306,24 @@ class SymPyVerifier:
                 "expected_integral": str(expected_result),
                 "definite": definite,
                 "limits": str(limits) if limits else None,
-                "explanation": explanation
+                "explanation": explanation,
             }
 
         except Exception as e:
             return {
                 "is_valid": False,
                 "error": str(e),
-                "explanation": f"Integral verification failed: {str(e)}"
+                "explanation": f"Integral verification failed: {str(e)}",
             }
 
     @staticmethod
-    def verify_limit(expr: Union[str, Expr], variable: str,
-                    point: Union[str, float, int],
-                    expected_result: Union[str, Expr],
-                    direction: str = "+-") -> Dict[str, Any]:
+    def verify_limit(
+        expr: Union[str, Expr],
+        variable: str,
+        point: Union[str, float, int],
+        expected_result: Union[str, Expr],
+        direction: str = "+-",
+    ) -> Dict[str, Any]:
         """Verify a limit computation.
 
         Args:
@@ -298,9 +344,9 @@ class SymPyVerifier:
                 expected_result = LaTeXParser.parse(expected_result)
 
             # Handle infinity
-            if point == 'oo' or point == 'inf':
+            if point == "oo" or point == "inf":
                 point = sp.oo
-            elif point == '-oo' or point == '-inf':
+            elif point == "-oo" or point == "-inf":
                 point = -sp.oo
 
             # Compute limit
@@ -320,19 +366,20 @@ class SymPyVerifier:
                 "computed_limit": str(computed_limit),
                 "expected_limit": str(expected_result),
                 "difference": str(difference),
-                "explanation": "Limit is correct" if is_correct else f"Limit differs by: {difference}"
+                "explanation": (
+                    "Limit is correct" if is_correct else f"Limit differs by: {difference}"
+                ),
             }
 
         except Exception as e:
             return {
                 "is_valid": False,
                 "error": str(e),
-                "explanation": f"Limit verification failed: {str(e)}"
+                "explanation": f"Limit verification failed: {str(e)}",
             }
 
     @staticmethod
-    def simplify_expression(expr: Union[str, Expr],
-                          show_steps: bool = True) -> Dict[str, Any]:
+    def simplify_expression(expr: Union[str, Expr], show_steps: bool = True) -> Dict[str, Any]:
         """Simplify a mathematical expression.
 
         Args:
@@ -379,14 +426,11 @@ class SymPyVerifier:
                 "original": str(expr),
                 "simplified": str(simplified),
                 "steps": steps if show_steps else None,
-                "explanation": f"Expression simplified from {expr} to {simplified}"
+                "explanation": f"Expression simplified from {expr} to {simplified}",
             }
 
         except Exception as e:
-            return {
-                "error": str(e),
-                "explanation": f"Simplification failed: {str(e)}"
-            }
+            return {"error": str(e), "explanation": f"Simplification failed: {str(e)}"}
 
 
 class ProofStepValidator:
@@ -396,8 +440,9 @@ class ProofStepValidator:
         """Initialize the proof validator."""
         self.verifier = SymPyVerifier()
 
-    def validate_proof(self, steps: List[Dict[str, str]],
-                      assumptions: List[str] = None) -> Dict[str, Any]:
+    def validate_proof(
+        self, steps: List[Dict[str, str]], assumptions: List[str] = None
+    ) -> Dict[str, Any]:
         """Validate a multi-step proof.
 
         Args:
@@ -427,7 +472,7 @@ class ProofStepValidator:
                     "expression": current_expr,
                     "justification": justification,
                     "is_valid": None,
-                    "explanation": ""
+                    "explanation": "",
                 }
 
                 # If there's an expected result, verify it
@@ -446,13 +491,16 @@ class ProofStepValidator:
                     previous_expr = steps[i - 1].get("result") or steps[i - 1].get("expression")
 
                     # Determine verification type based on justification
-                    if "derivative" in justification.lower() or "differentiate" in justification.lower():
+                    if (
+                        "derivative" in justification.lower()
+                        or "differentiate" in justification.lower()
+                    ):
                         # Extract variable from justification if possible
-                        var_match = re.search(r'with respect to (\w+)', justification)
+                        var_match = re.search(r"with respect to (\w+)", justification)
                         if var_match:
                             variable = var_match.group(1)
                         else:
-                            variable = 'x'  # default
+                            variable = "x"  # default
 
                         verification = self.verifier.verify_derivative(
                             previous_expr, variable, current_expr
@@ -463,12 +511,14 @@ class ProofStepValidator:
                         if not verification["is_valid"]:
                             all_valid = False
 
-                    elif "integrate" in justification.lower() or "integral" in justification.lower():
-                        var_match = re.search(r'with respect to (\w+)', justification)
+                    elif (
+                        "integrate" in justification.lower() or "integral" in justification.lower()
+                    ):
+                        var_match = re.search(r"with respect to (\w+)", justification)
                         if var_match:
                             variable = var_match.group(1)
                         else:
-                            variable = 'x'
+                            variable = "x"
 
                         verification = self.verifier.verify_integral(
                             previous_expr, variable, current_expr
@@ -493,13 +543,15 @@ class ProofStepValidator:
                 results.append(step_result)
 
             except Exception as e:
-                results.append({
-                    "step_number": step_num,
-                    "expression": step.get("expression", ""),
-                    "is_valid": False,
-                    "error": str(e),
-                    "explanation": f"Step validation failed: {str(e)}"
-                })
+                results.append(
+                    {
+                        "step_number": step_num,
+                        "expression": step.get("expression", ""),
+                        "is_valid": False,
+                        "error": str(e),
+                        "explanation": f"Step validation failed: {str(e)}",
+                    }
+                )
                 all_valid = False
 
         return {
@@ -507,7 +559,7 @@ class ProofStepValidator:
             "total_steps": len(steps),
             "valid_steps": sum(1 for r in results if r.get("is_valid") != False),
             "steps": results,
-            "assumptions": assumptions
+            "assumptions": assumptions,
         }
 
 
@@ -515,10 +567,14 @@ class ProofStepValidator:
 # MCP Tools
 # ============================================================================
 
+
 @mcp.tool
-def verify_step(expression: str, expected_result: str,
-               assumptions: List[str] = None,
-               operation: str = "equality") -> str:
+def verify_step(
+    expression: str,
+    expected_result: str,
+    assumptions: List[str] = None,
+    operation: str = "equality",
+) -> Dict[str, Any]:
     """Verify a single mathematical step.
 
     Args:
@@ -540,36 +596,39 @@ def verify_step(expression: str, expected_result: str,
         if operation == "equality":
             result = verifier.verify_equality(expression, expected_result, assumptions)
         elif operation == "derivative":
-            # Extract variable (default to 'x')
-            result = verifier.verify_derivative(expression, 'x', expected_result)
+            result = verifier.verify_derivative(expression, "x", expected_result)
         elif operation == "integral":
-            result = verifier.verify_integral(expression, 'x', expected_result)
+            result = verifier.verify_integral(expression, "x", expected_result)
         elif operation == "limit":
-            result = verifier.verify_limit(expression, 'x', 'oo', expected_result)
+            result = verifier.verify_limit(expression, "x", "oo", expected_result)
         else:
-            return f"Unknown operation type: {operation}"
+            return {
+                "success": False,
+                "data": None,
+                "message": f"Unknown operation type: {operation}",
+                "error": "Invalid operation",
+            }
 
-        # Format response
-        if result.get("is_valid"):
-            response = f"✓ **Verification Successful**\n\n{result.get('explanation', '')}\n\n"
-            response += f"**Expression:** {result.get('expr1', expression)}\n"
-            response += f"**Result:** {result.get('expr2', expected_result)}"
-        else:
-            response = f"✗ **Verification Failed**\n\n{result.get('explanation', '')}\n\n"
-            if 'error' not in result:
-                response += f"**Expression:** {result.get('expr1', expression)}\n"
-                response += f"**Expected:** {result.get('expr2', expected_result)}\n"
-                if 'difference' in result:
-                    response += f"**Difference:** {result['difference']}"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": (
+                "Verification successful" if result.get("is_valid") else "Verification failed"
+            ),
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error verifying step: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error verifying step",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def verify_proof(steps: List[Dict[str, str]], assumptions: List[str] = None) -> str:
+def verify_proof(steps: List[Dict[str, str]], assumptions: List[str] = None) -> Dict[str, Any]:
     """Verify a multi-step mathematical proof.
 
     Args:
@@ -592,48 +651,24 @@ def verify_proof(steps: List[Dict[str, str]], assumptions: List[str] = None) -> 
         validator = ProofStepValidator()
         result = validator.validate_proof(steps, assumptions)
 
-        # Format response
-        response = f"# Proof Verification Results\n\n"
-        response += f"**Total Steps:** {result['total_steps']}\n"
-        response += f"**Valid Steps:** {result['valid_steps']}/{result['total_steps']}\n"
-        response += f"**Overall Status:** {'✓ Valid' if result['all_steps_valid'] else '✗ Invalid'}\n\n"
-
-        if assumptions:
-            response += f"**Assumptions:** {', '.join(assumptions)}\n\n"
-
-        response += "## Step-by-Step Analysis\n\n"
-
-        for step_result in result['steps']:
-            step_num = step_result['step_number']
-            response += f"### Step {step_num}\n"
-            response += f"**Expression:** {step_result['expression']}\n"
-            response += f"**Justification:** {step_result.get('justification', 'N/A')}\n"
-
-            if 'is_valid' in step_result and step_result['is_valid'] is not None:
-                status = "✓" if step_result['is_valid'] else "✗"
-                response += f"**Status:** {status}\n"
-
-            if 'explanation' in step_result:
-                response += f"**Explanation:** {step_result['explanation']}\n"
-
-            if 'transition_valid' in step_result:
-                trans_status = "✓" if step_result['transition_valid'] else "✗"
-                response += f"**Transition from previous step:** {trans_status}\n"
-                response += f"**Transition explanation:** {step_result.get('transition_explanation', '')}\n"
-
-            if 'error' in step_result:
-                response += f"**Error:** {step_result['error']}\n"
-
-            response += "\n"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": f"Proof {'valid' if result['all_steps_valid'] else 'invalid'}: {result['valid_steps']}/{result['total_steps']} steps valid",
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error verifying proof: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error verifying proof",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def simplify_expression(expression: str, show_steps: bool = True) -> str:
+def simplify_expression(expression: str, show_steps: bool = True) -> Dict[str, Any]:
     """Simplify a mathematical expression and optionally show steps.
 
     Args:
@@ -647,26 +682,32 @@ def simplify_expression(expression: str, show_steps: bool = True) -> str:
         verifier = SymPyVerifier()
         result = verifier.simplify_expression(expression, show_steps)
 
-        if 'error' in result:
-            return f"Error: {result['error']}"
+        if "error" in result:
+            return {
+                "success": False,
+                "data": None,
+                "message": "Failed to simplify expression",
+                "error": result["error"],
+            }
 
-        response = f"# Expression Simplification\n\n"
-        response += f"**Original:** {result['original']}\n"
-        response += f"**Simplified:** {result['simplified']}\n\n"
-
-        if show_steps and result.get('steps'):
-            response += "## Simplification Steps\n\n"
-            for step in result['steps']:
-                response += f"**{step['step']}:** {step['expression']}\n"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": f"Simplified expression from {result['original']} to {result['simplified']}",
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error simplifying expression: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error simplifying expression",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def verify_equivalence(expr1: str, expr2: str, assumptions: List[str] = None) -> str:
+def verify_equivalence(expr1: str, expr2: str, assumptions: List[str] = None) -> Dict[str, Any]:
     """Verify if two mathematical expressions are equivalent.
 
     Args:
@@ -684,29 +725,30 @@ def verify_equivalence(expr1: str, expr2: str, assumptions: List[str] = None) ->
         verifier = SymPyVerifier()
         result = verifier.verify_equality(expr1, expr2, assumptions)
 
-        if result.get("is_valid"):
-            response = f"✓ **Expressions are Equivalent**\n\n"
-            response += f"**Expression 1:** {result['expr1']}\n"
-            response += f"**Expression 2:** {result['expr2']}\n"
-            response += f"**Difference:** {result['simplified_difference']} (simplifies to 0)"
-        else:
-            response = f"✗ **Expressions are NOT Equivalent**\n\n"
-            response += f"**Expression 1:** {result['expr1']}\n"
-            response += f"**Expression 2:** {result['expr2']}\n"
-            response += f"**Difference:** {result['simplified_difference']}"
-
-        if assumptions:
-            response += f"\n\n**Assumptions:** {', '.join(assumptions)}"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": (
+                "Expressions are equivalent"
+                if result.get("is_valid")
+                else "Expressions are not equivalent"
+            ),
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error verifying equivalence: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error verifying equivalence",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def check_identity(identity_expr: str, variable: str = 'x',
-                   test_values: List[float] = None) -> str:
+def check_identity(
+    identity_expr: str, variable: str = "x", test_values: List[float] = None
+) -> Dict[str, Any]:
     """Check if a mathematical identity holds.
 
     Args:
@@ -727,39 +769,55 @@ def check_identity(identity_expr: str, variable: str = 'x',
 
         is_identity = simplified == 0
 
-        response = f"# Identity Verification\n\n"
-        response += f"**Identity:** {identity_expr}\n"
-        response += f"**Parsed as:** {expr}\n"
-        response += f"**Simplified:** {simplified}\n\n"
-
-        if is_identity:
-            response += f"✓ **Identity Holds** (simplifies to 0)\n"
-        else:
-            response += f"✗ **Identity Does NOT Hold**\n"
-            response += f"Expression simplifies to: {simplified} (not 0)\n"
+        result_data = {
+            "identity_expr": identity_expr,
+            "parsed": str(expr),
+            "simplified": str(simplified),
+            "is_identity": is_identity,
+            "test_results": [],
+        }
 
         # Test with specific values if provided
         if test_values is not None and len(test_values) > 0:
-            response += f"\n## Numerical Verification\n\n"
             var_symbol = symbols(variable)
 
             for val in test_values:
                 try:
                     result = expr.subs(var_symbol, val)
                     result_float = float(result.evalf())
-                    status = "✓" if abs(result_float) < 1e-10 else "✗"
-                    response += f"**{variable} = {val}:** {result_float} {status}\n"
+                    result_data["test_results"].append(
+                        {
+                            "value": val,
+                            "result": result_float,
+                            "holds": abs(result_float) < 1e-10,
+                        }
+                    )
                 except Exception as e:
-                    response += f"**{variable} = {val}:** Error - {str(e)}\n"
+                    result_data["test_results"].append(
+                        {
+                            "value": val,
+                            "error": str(e),
+                        }
+                    )
 
-        return response
+        return {
+            "success": True,
+            "data": result_data,
+            "message": "Identity holds" if is_identity else "Identity does not hold",
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error checking identity: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error checking identity",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def verify_derivative(expression: str, variable: str, expected_derivative: str) -> str:
+def verify_derivative(expression: str, variable: str, expected_derivative: str) -> Dict[str, Any]:
     """Verify a derivative calculation.
 
     Args:
@@ -775,31 +833,33 @@ def verify_derivative(expression: str, variable: str, expected_derivative: str) 
         verifier = SymPyVerifier()
         result = verifier.verify_derivative(expression, variable, expected_derivative)
 
-        response = f"# Derivative Verification\n\n"
-        response += f"**Original Expression:** {result['original_expr']}\n"
-        response += f"**Variable:** {result['variable']}\n"
-        response += f"**Expected Derivative:** {result['expected_derivative']}\n"
-        response += f"**Computed Derivative:** {result['computed_derivative']}\n\n"
-
-        if result.get("is_valid"):
-            response += f"✓ **Derivative is Correct**\n"
-        else:
-            response += f"✗ **Derivative is Incorrect**\n"
-            response += f"**Difference:** {result.get('difference', 'N/A')}\n"
-
-        response += f"\n{result.get('explanation', '')}"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": (
+                "Derivative is correct" if result.get("is_valid") else "Derivative is incorrect"
+            ),
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error verifying derivative: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error verifying derivative",
+            "error": str(e),
+        }
 
 
 @mcp.tool
-def verify_integral(expression: str, variable: str, expected_integral: str,
-                   is_definite: bool = False,
-                   lower_limit: Optional[str] = None,
-                   upper_limit: Optional[str] = None) -> str:
+def verify_integral(
+    expression: str,
+    variable: str,
+    expected_integral: str,
+    is_definite: bool = False,
+    lower_limit: Optional[str] = None,
+    upper_limit: Optional[str] = None,
+) -> Dict[str, Any]:
     """Verify an integral calculation.
 
     Args:
@@ -821,42 +881,37 @@ def verify_integral(expression: str, variable: str, expected_integral: str,
         limits = None
         if is_definite and lower_limit is not None and upper_limit is not None:
             try:
-                lower = LaTeXParser.parse(lower_limit) if isinstance(lower_limit, str) else lower_limit
-                upper = LaTeXParser.parse(upper_limit) if isinstance(upper_limit, str) else upper_limit
+                lower = (
+                    LaTeXParser.parse(lower_limit) if isinstance(lower_limit, str) else lower_limit
+                )
+                upper = (
+                    LaTeXParser.parse(upper_limit) if isinstance(upper_limit, str) else upper_limit
+                )
                 limits = (lower, upper)
             except:
                 # Try as numbers
-                lower = float(lower_limit) if lower_limit != 'oo' else sp.oo
-                upper = float(upper_limit) if upper_limit != 'oo' else sp.oo
+                lower = float(lower_limit) if lower_limit != "oo" else sp.oo
+                upper = float(upper_limit) if upper_limit != "oo" else sp.oo
                 limits = (lower, upper)
 
-        result = verifier.verify_integral(expression, variable, expected_integral,
-                                         definite=is_definite, limits=limits)
+        result = verifier.verify_integral(
+            expression, variable, expected_integral, definite=is_definite, limits=limits
+        )
 
-        response = f"# Integral Verification\n\n"
-        response += f"**Original Expression:** {result['original_expr']}\n"
-        response += f"**Variable:** {result['variable']}\n"
-
-        if is_definite:
-            response += f"**Type:** Definite Integral\n"
-            response += f"**Limits:** {result.get('limits', 'N/A')}\n"
-        else:
-            response += f"**Type:** Indefinite Integral\n"
-
-        response += f"**Expected Integral:** {result['expected_integral']}\n"
-        response += f"**Computed Integral:** {result['computed_integral']}\n\n"
-
-        if result.get("is_valid"):
-            response += f"✓ **Integral is Correct**\n"
-        else:
-            response += f"✗ **Integral is Incorrect**\n"
-
-        response += f"\n{result.get('explanation', '')}"
-
-        return response
+        return {
+            "success": True,
+            "data": result,
+            "message": "Integral is correct" if result.get("is_valid") else "Integral is incorrect",
+            "error": None,
+        }
 
     except Exception as e:
-        return f"Error verifying integral: {str(e)}"
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error verifying integral",
+            "error": str(e),
+        }
 
 
 def main():
@@ -868,6 +923,7 @@ def main():
         print(f"Failed to start Mathematical Verification MCP server: {e}", file=sys.stderr)
         print(f"Error type: {type(e).__name__}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
