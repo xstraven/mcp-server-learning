@@ -3,6 +3,8 @@
 Test to verify LaTeX rendering in different formats.
 """
 
+import pytest
+
 # Path handling is done by conftest.py
 
 from mcp_server_learning.fastmcp_flashcard_server import (
@@ -13,6 +15,7 @@ from mcp_server_learning.fastmcp_flashcard_server import (
 )
 
 
+@pytest.mark.usefixtures("anki_test_cleanup")
 def test_different_latex_formats():
     """Test different LaTeX formats to see which renders better."""
 
@@ -63,7 +66,7 @@ def test_different_latex_formats():
                     {
                         "data": card,
                         "card_type": "front-back",
-                        "tags": ["latex-test", f"format-{i}"],
+                        "tags": ["mcp-test-latex", f"mcp-test-format-{i}"],
                     }
                     for card in cards
                 ]

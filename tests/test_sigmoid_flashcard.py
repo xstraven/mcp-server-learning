@@ -6,6 +6,8 @@ Tests creating a sigmoid function flashcard with LaTeX equation.
 
 import os
 
+import pytest
+
 from mcp_server_learning.fastmcp_flashcard_server import (
     AnkiCardManager,
     AnkiConnector,
@@ -17,6 +19,7 @@ from mcp_server_learning.fastmcp_flashcard_server import (
 
 
 
+@pytest.mark.usefixtures("anki_test_cleanup")
 def test_sigmoid_flashcard():
     """Test creating a simple sigmoid function flashcard."""
 
@@ -89,7 +92,7 @@ A: $\\sigma(x) = \\frac{1}{1 + e^{-x}}$"""
                 {
                     "data": card,
                     "card_type": "front-back",
-                    "tags": ["test", "sigmoid", "math"],
+                    "tags": ["mcp-test-sigmoid", "mcp-test-math"],
                 }
             )
 
@@ -115,6 +118,7 @@ A: $\\sigma(x) = \\frac{1}{1 + e^{-x}}$"""
         return False
 
 
+@pytest.mark.usefixtures("anki_test_cleanup")
 def test_with_mcp_tool():
     """Test using the MCP tool function directly."""
     print("=== Testing with MCP upload_to_anki function ===\n")
@@ -153,7 +157,7 @@ A: $\\sigma(x) = \\frac{1}{1 + e^{-x}}$"""
                 {
                     "data": card,
                     "card_type": "front-back",
-                    "tags": ["test", "sigmoid", "mcp"],
+                    "tags": ["mcp-test-sigmoid", "mcp-test-mcp"],
                 }
             )
 

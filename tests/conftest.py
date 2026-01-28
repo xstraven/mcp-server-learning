@@ -74,3 +74,56 @@ A: 4""",
         "multiple_cloze": """{{Python}} is a programming language.
 It was created by {{Guido van Rossum}} in {{1991}}.""",
     }
+
+
+@pytest.fixture(scope="session", autouse=False)
+def anki_test_cleanup(request):
+    """Session-scoped fixture for cleaning up Anki test data after tests complete.
+
+    This fixture cleans up test decks and notes created during integration tests.
+    It runs after all tests in the session that use it have completed.
+
+    Test decks and notes are identified by:
+    - Specific deck name patterns used in tests
+    - Tags matching the pattern 'mcp-test-*'
+    """
+    # Yield control to tests first
+    yield
+
+    # Teardown: cleanup after all tests
+    from mcp_server_learning.fastmcp_flashcard_server import AnkiConnector
+
+    connector = AnkiConnector()
+
+    # Check if Anki is available
+    try:
+        connector.check_permission()
+    except Exception:
+        # Anki not available, skip cleanup
+        return
+
+    # Test deck patterns to clean up
+    test_deck_patterns = [
+        "Display LaTeX Test",
+        "Test Deck - Sigmoid",
+        "Test Deck - Sigmoid MCP",
+        "LaTeX Test - Standard",
+        "LaTeX Test - Double",
+        "LaTeX Test - MathJax",
+        "LaTeX Test - Display",
+        "LaTeX Test - Raw",
+    ]
+
+    # Clean up notes by tag pattern
+    try:
+        note_ids = connector.find_notes("tag:re:mcp-test-.*")
+        if note_ids:
+            connector.delete_notes(note_ids)
+    except Exception:
+        pass
+
+    # Clean up test decks
+    try:
+        connector.delete_decks(test_deck_patterns, cards_too=True)
+    except Exception:
+        pass

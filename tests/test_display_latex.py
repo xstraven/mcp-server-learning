@@ -3,6 +3,8 @@
 Test script to verify that LaTeX is automatically converted to display format.
 """
 
+import pytest
+
 # Path handling is done by conftest.py
 
 from mcp_server_learning.fastmcp_flashcard_server import (
@@ -86,6 +88,7 @@ def test_direct_conversion():
         print()
 
 
+@pytest.mark.usefixtures("anki_test_cleanup")
 def test_upload_with_display_format():
     """Test uploading a card with display LaTeX format."""
 
@@ -127,7 +130,7 @@ A: $\\sigma(x) = \\frac{1}{1 + e^{-x}}$"""
             {
                 "data": card,
                 "card_type": "front-back",
-                "tags": ["display-latex-test"],
+                "tags": ["mcp-test-display-latex"],
             }
             for card in cards
         ]

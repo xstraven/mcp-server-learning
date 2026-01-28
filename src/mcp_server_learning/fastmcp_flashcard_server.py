@@ -128,6 +128,15 @@ class AnkiConnector:
         """Delete notes by their IDs."""
         self._make_request("deleteNotes", {"notes": note_ids})
 
+    def delete_decks(self, deck_names: List[str], cards_too: bool = True) -> None:
+        """Delete decks and optionally their cards.
+
+        Args:
+            deck_names: List of deck names to delete.
+            cards_too: If True, also delete all cards in those decks. Defaults to True.
+        """
+        self._make_request("deleteDecks", {"decks": deck_names, "cardsToo": cards_too})
+
     def sync(self) -> None:
         """Synchronize collection with AnkiWeb."""
         self._make_request("sync")

@@ -191,6 +191,35 @@ class TestAnkiConnectivity:
         assert note_data["fields"] == {"Front": "Question", "Back": "Answer"}
         assert note_data["tags"] == ["test", "automated"]
 
+    @patch("requests.Session.post")
+    def test_delete_decks_success(self, mock_post):
+        """Test successful deck deletion."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": None, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Should not raise an exception
+        self.anki_connector.delete_decks(["Test Deck 1", "Test Deck 2"], cards_too=True)
+
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["action"] == "deleteDecks"
+        assert call_args[1]["json"]["params"]["decks"] == ["Test Deck 1", "Test Deck 2"]
+        assert call_args[1]["json"]["params"]["cardsToo"] is True
+
+    @patch("requests.Session.post")
+    def test_delete_decks_without_cards(self, mock_post):
+        """Test deck deletion without deleting cards."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": None, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        self.anki_connector.delete_decks(["Test Deck"], cards_too=False)
+
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["params"]["cardsToo"] is False
+
 
 class TestAnkiConnectivityIntegration:
     """Integration tests for actual Anki Connect connectivity.
