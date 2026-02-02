@@ -101,7 +101,19 @@ class AnkiConnector:
             "fields": fields,
             "tags": tags,
         }
-        return self._make_request("addNote", {"note": note})
+        note_id = self._make_request("addNote", {"note": note})
+
+        # Auto-flag with purple (best-effort, don't fail if flagging errors)
+        try:
+            if note_id:
+                card_ids = self.get_card_ids_from_notes([note_id])
+                if card_ids:
+                    self._set_card_flags(card_ids)
+        except Exception:
+            # Flag setting is enhancement, don't break note creation
+            pass
+
+        return note_id
 
     def add_notes(self, notes: List[Dict[str, Any]]) -> List[Optional[int]]:
         """Add multiple notes to Anki."""
@@ -115,7 +127,20 @@ class AnkiConnector:
                     "tags": note.get("tags", []),
                 }
             )
-        return self._make_request("addNotes", {"notes": formatted_notes})
+        note_ids = self._make_request("addNotes", {"notes": formatted_notes})
+
+        # Auto-flag with purple (best-effort, don't fail if flagging errors)
+        try:
+            successful_ids = [nid for nid in note_ids if nid is not None]
+            if successful_ids:
+                card_ids = self.get_card_ids_from_notes(successful_ids)
+                if card_ids:
+                    self._set_card_flags(card_ids)
+        except Exception:
+            # Flag setting is enhancement, don't break batch creation
+            pass
+
+        return note_ids
 
     def find_notes(self, query: str) -> List[int]:
         """Find notes matching the given query."""
@@ -125,6 +150,24 @@ class AnkiConnector:
         """Get detailed information about specific notes."""
         return self._make_request("notesInfo", {"notes": note_ids})
 
+    def get_card_ids_from_notes(self, note_ids: List[int]) -> List[int]:
+        """Get all card IDs associated with note IDs.
+
+        Args:
+            note_ids: List of note IDs to get cards from.
+
+        Returns:
+            List of card IDs (may be multiple cards per note).
+        """
+        if not note_ids:
+            return []
+
+        notes_data = self.notes_info(note_ids)
+        card_ids = []
+        for note in notes_data:
+            card_ids.extend(note.get("cards", []))
+        return card_ids
+
     def update_note(
         self, note_id: int, fields: Dict[str, str], tags: List[str] = None
     ) -> None:
@@ -133,6 +176,15 @@ class AnkiConnector:
         if tags is not None:
             params["note"]["tags"] = tags
         self._make_request("updateNoteFields", params)
+
+        # Auto-flag with purple (best-effort, don't fail if flagging errors)
+        try:
+            card_ids = self.get_card_ids_from_notes([note_id])
+            if card_ids:
+                self._set_card_flags(card_ids)
+        except Exception:
+            # Flag setting is enhancement, don't break note update
+            pass
 
     def delete_notes(self, note_ids: List[int]) -> None:
         """Delete notes by their IDs."""
@@ -163,6 +215,21 @@ class AnkiConnector:
             deck: Target deck name.
         """
         self._make_request("changeDeck", {"cards": card_ids, "deck": deck})
+
+    def _set_card_flags(self, card_ids: List[int], flag: int = 7) -> None:
+        """Set flags on cards (purple=7 by default).
+
+        Args:
+            card_ids: List of card IDs to flag.
+            flag: Flag value (0=none, 1=red, 2=orange, 3=green, 4=blue, 5=pink, 6=turquoise, 7=purple).
+        """
+        if not card_ids:
+            return
+
+        self._make_request(
+            "setSpecificValueOfCard",
+            {"cards": card_ids, "keys": ["flags"], "newValues": [str(flag)]},
+        )
 
 
 class FlashcardGenerator:

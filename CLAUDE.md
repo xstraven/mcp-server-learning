@@ -73,6 +73,12 @@ Console scripts registered in `pyproject.toml` under `[project.scripts]`.
 - Anki upload: Convert to MathJax format (`\(...\)`, `\[...\]`)
 - Use `FlashcardGenerator.convert_to_anki_mathjax()` for Anki, `preserve_claude_latex()` for display
 
+### Card Flagging (Flashcard Server)
+- All cards added or modified automatically receive the purple flag (flag value 7)
+- Flagging is best-effort: failures don't break card creation/updates
+- Implementation: `add_note()`, `add_notes()`, and `update_note()` auto-call `_set_card_flags()`
+- Helper methods: `get_card_ids_from_notes()` converts note IDs → card IDs
+
 ### LaTeX Parsing (Math Server)
 - Primary: `latex2sympy2.latex2sympy()`
 - Fallback: `sympy.parsing.latex.parse_latex()`

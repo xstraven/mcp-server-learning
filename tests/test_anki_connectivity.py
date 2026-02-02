@@ -170,10 +170,26 @@ class TestAnkiConnectivity:
     def test_add_note_success(self, mock_post):
         """Test successful note addition."""
         expected_note_id = 1234567890
-        mock_response = Mock()
-        mock_response.json.return_value = {"result": expected_note_id, "error": None}
-        mock_response.raise_for_status.return_value = None
-        mock_post.return_value = mock_response
+
+        # Mock multiple responses: addNote, notesInfo, setSpecificValueOfCard
+        mock_responses = [
+            Mock(
+                json=lambda: {"result": expected_note_id, "error": None},
+                raise_for_status=lambda: None,
+            ),
+            Mock(
+                json=lambda: {
+                    "result": [{"noteId": expected_note_id, "cards": [999]}],
+                    "error": None,
+                },
+                raise_for_status=lambda: None,
+            ),
+            Mock(
+                json=lambda: {"result": None, "error": None},
+                raise_for_status=lambda: None,
+            ),
+        ]
+        mock_post.side_effect = mock_responses
 
         result = self.anki_connector.add_note(
             deck_name="Test Deck",
@@ -183,9 +199,11 @@ class TestAnkiConnectivity:
         )
 
         assert result == expected_note_id
-        call_args = mock_post.call_args
-        assert call_args[1]["json"]["action"] == "addNote"
-        note_data = call_args[1]["json"]["params"]["note"]
+
+        # Verify the first call was addNote with correct params
+        first_call = mock_post.call_args_list[0]
+        assert first_call[1]["json"]["action"] == "addNote"
+        note_data = first_call[1]["json"]["params"]["note"]
         assert note_data["deckName"] == "Test Deck"
         assert note_data["modelName"] == "Basic"
         assert note_data["fields"] == {"Front": "Question", "Back": "Answer"}
@@ -297,6 +315,232 @@ class TestAnkiConnectivity:
 
         assert "AnkiConnect error: deck was not found" in str(exc_info.value)
 
+    @patch("requests.Session.post")
+    def test_get_card_ids_from_notes_success(self, mock_post):
+        """Test successful extraction of card IDs from notes."""
+        mock_notes = [
+            {"noteId": 123, "cards": [456, 457]},
+            {"noteId": 124, "cards": [458]},
+        ]
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": mock_notes, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        result = self.anki_connector.get_card_ids_from_notes([123, 124])
+
+        assert result == [456, 457, 458]
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["action"] == "notesInfo"
+
+    @patch("requests.Session.post")
+    def test_get_card_ids_from_notes_empty(self, mock_post):
+        """Test get_card_ids_from_notes with empty note list."""
+        result = self.anki_connector.get_card_ids_from_notes([])
+        assert result == []
+        mock_post.assert_not_called()
+
+    @patch("requests.Session.post")
+    def test_get_card_ids_from_notes_no_cards(self, mock_post):
+        """Test get_card_ids_from_notes when notes have no cards."""
+        mock_notes = [{"noteId": 123, "cards": []}]
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": mock_notes, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        result = self.anki_connector.get_card_ids_from_notes([123])
+
+        assert result == []
+
+    @patch("requests.Session.post")
+    def test_set_card_flags_success(self, mock_post):
+        """Test successful flag setting on cards."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": None, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        self.anki_connector._set_card_flags([456, 457], flag=7)
+
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["action"] == "setSpecificValueOfCard"
+        assert call_args[1]["json"]["params"]["cards"] == [456, 457]
+        assert call_args[1]["json"]["params"]["keys"] == ["flags"]
+        assert call_args[1]["json"]["params"]["newValues"] == ["7"]
+
+    @patch("requests.Session.post")
+    def test_set_card_flags_empty_list(self, mock_post):
+        """Test _set_card_flags with empty card list."""
+        self.anki_connector._set_card_flags([])
+        mock_post.assert_not_called()
+
+    @patch("requests.Session.post")
+    def test_add_note_with_purple_flag(self, mock_post):
+        """Test add_note automatically sets purple flag."""
+        note_id = 123
+        card_ids = [456]
+
+        # Setup mock responses for multiple calls
+        mock_responses = [
+            # First call: addNote
+            Mock(
+                json=lambda: {"result": note_id, "error": None},
+                raise_for_status=lambda: None,
+            ),
+            # Second call: notesInfo (for get_card_ids_from_notes)
+            Mock(
+                json=lambda: {
+                    "result": [{"noteId": note_id, "cards": card_ids}],
+                    "error": None,
+                },
+                raise_for_status=lambda: None,
+            ),
+            # Third call: setSpecificValueOfCard
+            Mock(
+                json=lambda: {"result": None, "error": None},
+                raise_for_status=lambda: None,
+            ),
+        ]
+        mock_post.side_effect = mock_responses
+
+        result = self.anki_connector.add_note(
+            deck_name="Test",
+            model_name="Basic",
+            fields={"Front": "Q", "Back": "A"},
+        )
+
+        assert result == note_id
+        assert mock_post.call_count == 3
+
+        # Verify the three calls
+        calls = mock_post.call_args_list
+        assert calls[0][1]["json"]["action"] == "addNote"
+        assert calls[1][1]["json"]["action"] == "notesInfo"
+        assert calls[2][1]["json"]["action"] == "setSpecificValueOfCard"
+        assert calls[2][1]["json"]["params"]["cards"] == card_ids
+        assert calls[2][1]["json"]["params"]["newValues"] == ["7"]
+
+    @patch("requests.Session.post")
+    def test_add_note_flag_failure_doesnt_break_creation(self, mock_post):
+        """Test that flag setting failure doesn't prevent note creation."""
+        note_id = 123
+
+        # Mock responses: addNote succeeds, flagging fails
+        mock_responses = [
+            Mock(
+                json=lambda: {"result": note_id, "error": None},
+                raise_for_status=lambda: None,
+            ),
+            # notesInfo call raises exception
+            Mock(side_effect=Exception("AnkiConnect error: flagging failed")),
+        ]
+        mock_post.side_effect = mock_responses
+
+        # Should still return note_id despite flagging error
+        result = self.anki_connector.add_note(
+            deck_name="Test",
+            model_name="Basic",
+            fields={"Front": "Q", "Back": "A"},
+        )
+
+        assert result == note_id
+
+    @patch("requests.Session.post")
+    def test_add_notes_batch_with_purple_flags(self, mock_post):
+        """Test add_notes automatically sets purple flags on batch."""
+        note_ids = [123, 124]
+        card_ids = [456, 457, 458]
+
+        mock_responses = [
+            # First: addNotes
+            Mock(
+                json=lambda: {"result": note_ids, "error": None},
+                raise_for_status=lambda: None,
+            ),
+            # Second: notesInfo
+            Mock(
+                json=lambda: {
+                    "result": [
+                        {"noteId": 123, "cards": [456, 457]},
+                        {"noteId": 124, "cards": [458]},
+                    ],
+                    "error": None,
+                },
+                raise_for_status=lambda: None,
+            ),
+            # Third: setSpecificValueOfCard
+            Mock(
+                json=lambda: {"result": None, "error": None},
+                raise_for_status=lambda: None,
+            ),
+        ]
+        mock_post.side_effect = mock_responses
+
+        result = self.anki_connector.add_notes(
+            [
+                {
+                    "deck_name": "Test",
+                    "model_name": "Basic",
+                    "fields": {"Front": "Q1", "Back": "A1"},
+                    "tags": [],
+                },
+                {
+                    "deck_name": "Test",
+                    "model_name": "Basic",
+                    "fields": {"Front": "Q2", "Back": "A2"},
+                    "tags": [],
+                },
+            ]
+        )
+
+        assert result == note_ids
+        assert mock_post.call_count == 3
+
+        calls = mock_post.call_args_list
+        assert calls[2][1]["json"]["action"] == "setSpecificValueOfCard"
+        assert calls[2][1]["json"]["params"]["cards"] == card_ids
+
+    @patch("requests.Session.post")
+    def test_update_note_with_purple_flag(self, mock_post):
+        """Test update_note automatically reapplies purple flag."""
+        note_id = 123
+        card_ids = [456]
+
+        mock_responses = [
+            # First: updateNoteFields
+            Mock(
+                json=lambda: {"result": None, "error": None},
+                raise_for_status=lambda: None,
+            ),
+            # Second: notesInfo
+            Mock(
+                json=lambda: {
+                    "result": [{"noteId": note_id, "cards": card_ids}],
+                    "error": None,
+                },
+                raise_for_status=lambda: None,
+            ),
+            # Third: setSpecificValueOfCard
+            Mock(
+                json=lambda: {"result": None, "error": None},
+                raise_for_status=lambda: None,
+            ),
+        ]
+        mock_post.side_effect = mock_responses
+
+        self.anki_connector.update_note(
+            note_id=note_id, fields={"Front": "Updated Q"}
+        )
+
+        assert mock_post.call_count == 3
+
+        calls = mock_post.call_args_list
+        assert calls[0][1]["json"]["action"] == "updateNoteFields"
+        assert calls[1][1]["json"]["action"] == "notesInfo"
+        assert calls[2][1]["json"]["action"] == "setSpecificValueOfCard"
+        assert calls[2][1]["json"]["params"]["cards"] == card_ids
+
 
 class TestAnkiConnectivityIntegration:
     """Integration tests for actual Anki Connect connectivity.
@@ -404,6 +648,155 @@ class TestAnkiConnectivityIntegration:
                 if note_id:
                     connector.delete_notes([note_id])
                 connector.delete_decks([source_deck, target_deck], cards_too=True)
+            except:
+                pass
+            pytest.skip(f"Anki not available for integration test: {e}")
+
+    @pytest.mark.integration
+    def test_real_anki_purple_flag_on_new_card(self):
+        """Test that new cards automatically get purple flag."""
+        connector = AnkiConnector()
+        test_deck = "Test_Purple_Flag"
+        note_id = None
+
+        try:
+            # Create test deck
+            connector.create_deck(test_deck)
+
+            # Add a note (should auto-flag with purple)
+            note_id = connector.add_note(
+                deck_name=test_deck,
+                model_name="Basic",
+                fields={"Front": "Test Purple Flag", "Back": "Answer"},
+                tags=["test-purple"],
+            )
+
+            assert note_id is not None
+
+            # Get card IDs
+            card_ids = connector.get_card_ids_from_notes([note_id])
+            assert len(card_ids) > 0
+
+            # Verify purple flag (7) is set using cardsInfo
+            cards_info = connector._make_request("cardsInfo", {"cards": card_ids})
+            assert len(cards_info) > 0
+            for card_info in cards_info:
+                assert card_info.get("flags") == 7, "Card should have purple flag (7)"
+
+            # Clean up
+            connector.delete_notes([note_id])
+            connector.delete_decks([test_deck], cards_too=True)
+
+        except Exception as e:
+            # Clean up on error
+            try:
+                if note_id:
+                    connector.delete_notes([note_id])
+                connector.delete_decks([test_deck], cards_too=True)
+            except:
+                pass
+            pytest.skip(f"Anki not available for integration test: {e}")
+
+    @pytest.mark.integration
+    def test_real_anki_purple_flag_on_batch(self):
+        """Test that batch-added cards automatically get purple flags."""
+        connector = AnkiConnector()
+        test_deck = "Test_Purple_Flag_Batch"
+        note_ids = []
+
+        try:
+            # Create test deck
+            connector.create_deck(test_deck)
+
+            # Add batch of notes
+            note_ids = connector.add_notes(
+                [
+                    {
+                        "deck_name": test_deck,
+                        "model_name": "Basic",
+                        "fields": {"Front": "Q1", "Back": "A1"},
+                        "tags": ["test-batch"],
+                    },
+                    {
+                        "deck_name": test_deck,
+                        "model_name": "Basic",
+                        "fields": {"Front": "Q2", "Back": "A2"},
+                        "tags": ["test-batch"],
+                    },
+                ]
+            )
+
+            successful_ids = [nid for nid in note_ids if nid is not None]
+            assert len(successful_ids) == 2
+
+            # Get all card IDs
+            card_ids = connector.get_card_ids_from_notes(successful_ids)
+            assert len(card_ids) > 0
+
+            # Verify all cards have purple flag
+            cards_info = connector._make_request("cardsInfo", {"cards": card_ids})
+            for card_info in cards_info:
+                assert card_info.get("flags") == 7, "All cards should have purple flag (7)"
+
+            # Clean up
+            connector.delete_notes(successful_ids)
+            connector.delete_decks([test_deck], cards_too=True)
+
+        except Exception as e:
+            # Clean up on error
+            try:
+                if note_ids:
+                    connector.delete_notes([nid for nid in note_ids if nid])
+                connector.delete_decks([test_deck], cards_too=True)
+            except:
+                pass
+            pytest.skip(f"Anki not available for integration test: {e}")
+
+    @pytest.mark.integration
+    def test_real_anki_purple_flag_reapplied_on_update(self):
+        """Test that purple flag is reapplied when note is updated."""
+        connector = AnkiConnector()
+        test_deck = "Test_Purple_Flag_Update"
+        note_id = None
+
+        try:
+            # Create test deck
+            connector.create_deck(test_deck)
+
+            # Add a note
+            note_id = connector.add_note(
+                deck_name=test_deck,
+                model_name="Basic",
+                fields={"Front": "Original Question", "Back": "Original Answer"},
+                tags=["test-update"],
+            )
+
+            assert note_id is not None
+
+            # Verify initial purple flag
+            card_ids = connector.get_card_ids_from_notes([note_id])
+            cards_info = connector._make_request("cardsInfo", {"cards": card_ids})
+            assert cards_info[0].get("flags") == 7
+
+            # Update the note
+            connector.update_note(
+                note_id=note_id, fields={"Front": "Updated Question"}
+            )
+
+            # Verify purple flag is still set (reapplied)
+            cards_info = connector._make_request("cardsInfo", {"cards": card_ids})
+            assert cards_info[0].get("flags") == 7, "Purple flag should persist after update"
+
+            # Clean up
+            connector.delete_notes([note_id])
+            connector.delete_decks([test_deck], cards_too=True)
+
+        except Exception as e:
+            # Clean up on error
+            try:
+                if note_id:
+                    connector.delete_notes([note_id])
+                connector.delete_decks([test_deck], cards_too=True)
             except:
                 pass
             pytest.skip(f"Anki not available for integration test: {e}")
