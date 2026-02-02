@@ -24,12 +24,16 @@ mcp = FastMCP("Flashcard MCP Server")
 class AnkiConnector:
     """Interface for connecting to Anki via AnkiConnect addon."""
 
-    def __init__(self, url: str = "http://localhost:8765", api_key: Optional[str] = None):
+    def __init__(
+        self, url: str = "http://localhost:8765", api_key: Optional[str] = None
+    ):
         self.url = url
         self.api_key = api_key
         self.session = requests.Session()
 
-    def _make_request(self, action: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    def _make_request(
+        self, action: str, params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """Make a request to AnkiConnect API."""
         if params is None:
             params = {}
@@ -81,7 +85,11 @@ class AnkiConnector:
         self._make_request("createDeck", {"deck": deck_name})
 
     def add_note(
-        self, deck_name: str, model_name: str, fields: Dict[str, str], tags: List[str] = None
+        self,
+        deck_name: str,
+        model_name: str,
+        fields: Dict[str, str],
+        tags: List[str] = None,
     ) -> Optional[int]:
         """Add a single note to Anki."""
         if tags is None:
@@ -117,7 +125,9 @@ class AnkiConnector:
         """Get detailed information about specific notes."""
         return self._make_request("notesInfo", {"notes": note_ids})
 
-    def update_note(self, note_id: int, fields: Dict[str, str], tags: List[str] = None) -> None:
+    def update_note(
+        self, note_id: int, fields: Dict[str, str], tags: List[str] = None
+    ) -> None:
         """Update an existing note."""
         params = {"note": {"id": note_id, "fields": fields}}
         if tags is not None:
@@ -128,18 +138,31 @@ class AnkiConnector:
         """Delete notes by their IDs."""
         self._make_request("deleteNotes", {"notes": note_ids})
 
-    def delete_decks(self, deck_names: List[str], cards_too: bool = True) -> None:
+    def delete_decks(
+        self, deck_names: List[str], cards_too: bool = True
+    ) -> None:
         """Delete decks and optionally their cards.
 
         Args:
             deck_names: List of deck names to delete.
             cards_too: If True, also delete all cards in those decks. Defaults to True.
         """
-        self._make_request("deleteDecks", {"decks": deck_names, "cardsToo": cards_too})
+        self._make_request(
+            "deleteDecks", {"decks": deck_names, "cardsToo": cards_too}
+        )
 
     def sync(self) -> None:
         """Synchronize collection with AnkiWeb."""
         self._make_request("sync")
+
+    def change_deck(self, card_ids: List[int], deck: str) -> None:
+        """Move cards to a different deck.
+
+        Args:
+            card_ids: List of card IDs to move.
+            deck: Target deck name.
+        """
+        self._make_request("changeDeck", {"cards": card_ids, "deck": deck})
 
 
 class FlashcardGenerator:
@@ -224,13 +247,17 @@ class FlashcardGenerator:
         return s
 
     @staticmethod
-    def create_anki_cloze_card(text: str, cloze_markers: List[str] = None) -> str:
+    def create_anki_cloze_card(
+        text: str, cloze_markers: List[str] = None
+    ) -> str:
         """Create a cloze deletion card in Anki format."""
         if cloze_markers is None:
             cloze_markers = ["{{", "}}"]
 
         # Find text within cloze markers
-        pattern = f"{re.escape(cloze_markers[0])}(.*?){re.escape(cloze_markers[1])}"
+        pattern = (
+            f"{re.escape(cloze_markers[0])}(.*?){re.escape(cloze_markers[1])}"
+        )
         matches = re.findall(pattern, text)
 
         if not matches:
@@ -240,15 +267,15 @@ class FlashcardGenerator:
         card_text = text
         for i, match in enumerate(matches, 1):
             replacement = f"{{{{c{i}::{match}}}}}"
-            old_pattern = (
-                f"{re.escape(cloze_markers[0])}{re.escape(match)}{re.escape(cloze_markers[1])}"
-            )
+            old_pattern = f"{re.escape(cloze_markers[0])}{re.escape(match)}{re.escape(cloze_markers[1])}"
             card_text = re.sub(old_pattern, replacement, card_text, count=1)
 
         return card_text
 
     @staticmethod
-    def parse_text_to_cards(text: str, card_type: str = "front-back") -> List[Dict[str, str]]:
+    def parse_text_to_cards(
+        text: str, card_type: str = "front-back"
+    ) -> List[Dict[str, str]]:
         """Parse text into multiple flashcards (preserves LaTeX for Claude Desktop)."""
         cards = []
 
@@ -256,7 +283,9 @@ class FlashcardGenerator:
             # First, try to find Q: A: patterns in the entire text (not split by newlines)
             qa_matches = list(
                 re.finditer(
-                    r"Q:\s*(.*?)\s*A:\s*(.*?)(?=Q:|$)", text.strip(), re.DOTALL | re.IGNORECASE
+                    r"Q:\s*(.*?)\s*A:\s*(.*?)(?=Q:|$)",
+                    text.strip(),
+                    re.DOTALL | re.IGNORECASE,
                 )
             )
 
@@ -302,9 +331,13 @@ class FlashcardGenerator:
                     continue
 
                 try:
-                    cloze_text = FlashcardGenerator.create_anki_cloze_card(section)
+                    cloze_text = FlashcardGenerator.create_anki_cloze_card(
+                        section
+                    )
                     # Keep LaTeX as-is for Claude Desktop display
-                    cloze_text = FlashcardGenerator.preserve_claude_latex(cloze_text)
+                    cloze_text = FlashcardGenerator.preserve_claude_latex(
+                        cloze_text
+                    )
                     cards.append({"text": cloze_text})
                 except ValueError:
                     # If no cloze markers found, skip this section
@@ -493,7 +526,9 @@ class HTMLCardRenderer:
         return text
 
     @staticmethod
-    def render_front_back_card(front: str, back: str, tags: List[str] = None) -> str:
+    def render_front_back_card(
+        front: str, back: str, tags: List[str] = None
+    ) -> str:
         """Render a front-back card as HTML."""
         if tags is None:
             tags = []
@@ -525,7 +560,9 @@ class HTMLCardRenderer:
             tags = []
 
         # Convert cloze deletions to HTML
-        cloze_html = re.sub(r"\{\{c\d+::(.*?)\}\}", r'<span class="cloze-blank">\1</span>', text)
+        cloze_html = re.sub(
+            r"\{\{c\d+::(.*?)\}\}", r'<span class="cloze-blank">\1</span>', text
+        )
         cloze_html = HTMLCardRenderer.convert_latex_to_mathjax(cloze_html)
 
         tags_html = ""
@@ -560,13 +597,13 @@ class HTMLCardRenderer:
             diagram_html = f'<div class="diagram-code">{diagram}</div>'
         elif diagram_type == "tikz":
             # For TikZ, show the code for now (could be enhanced with TikZ to SVG conversion)
-            diagram_html = (
-                f'<div class="diagram-code">{diagram}</div><p><em>TikZ Diagram Code</em></p>'
-            )
+            diagram_html = f'<div class="diagram-code">{diagram}</div><p><em>TikZ Diagram Code</em></p>'
         else:
             diagram_html = f'<div class="diagram-code">{diagram}</div>'
 
-        explanation_html = HTMLCardRenderer.convert_latex_to_mathjax(explanation)
+        explanation_html = HTMLCardRenderer.convert_latex_to_mathjax(
+            explanation
+        )
 
         tags_html = ""
         if tags:
@@ -608,7 +645,9 @@ class HTMLCardRenderer:
                     back = card_data["data"].get("back", "")
                 else:
                     # Handle string content format
-                    content = card_data.get("content", card_data.get("data", ""))
+                    content = card_data.get(
+                        "content", card_data.get("data", "")
+                    )
                     # Simple parsing - could be enhanced
                     parts = (
                         content.replace("\\begin{flashcard}", "")
@@ -619,7 +658,9 @@ class HTMLCardRenderer:
                     front = parts[0].strip() if parts else "No content"
                     back = parts[1].strip() if len(parts) > 1 else ""
 
-                cards_html.append(HTMLCardRenderer.render_front_back_card(front, back, tags))
+                cards_html.append(
+                    HTMLCardRenderer.render_front_back_card(front, back, tags)
+                )
 
             elif card_type == "cloze":
                 # Handle both LaTeX format and simple dict format
@@ -628,7 +669,9 @@ class HTMLCardRenderer:
                     content = card_data["data"].get("text", "")
                 else:
                     # Handle string content format
-                    content = card_data.get("content", card_data.get("data", ""))
+                    content = card_data.get(
+                        "content", card_data.get("data", "")
+                    )
                     # Clean up cloze content
                     content = (
                         content.replace("\\begin{clozecard}", "")
@@ -636,9 +679,13 @@ class HTMLCardRenderer:
                         .strip()
                     )
                     # Convert LaTeX cloze to standard format
-                    content = re.sub(r"\\\\cloze\{([^}]+)\}", r"{{c1::\1}}", content)
+                    content = re.sub(
+                        r"\\\\cloze\{([^}]+)\}", r"{{c1::\1}}", content
+                    )
 
-                cards_html.append(HTMLCardRenderer.render_cloze_card(content, tags))
+                cards_html.append(
+                    HTMLCardRenderer.render_cloze_card(content, tags)
+                )
 
             elif card_type == "diagram":
                 # Extract diagram and explanation
@@ -652,13 +699,17 @@ class HTMLCardRenderer:
                 # Split by vspace
                 parts = content.split("\\vspace{1em}")
                 diagram = parts[0].strip() if parts else "No diagram"
-                explanation = parts[1].strip() if len(parts) > 1 else "No explanation"
+                explanation = (
+                    parts[1].strip() if len(parts) > 1 else "No explanation"
+                )
 
                 # Detect diagram type
                 diagram_type = "tikz" if "tikzpicture" in diagram else "ascii"
 
                 cards_html.append(
-                    HTMLCardRenderer.render_diagram_card(diagram, explanation, diagram_type, tags)
+                    HTMLCardRenderer.render_diagram_card(
+                        diagram, explanation, diagram_type, tags
+                    )
                 )
 
         full_html = f"""
@@ -713,7 +764,9 @@ class AnkiCardManager:
         try:
             return self.anki.get_model_field_names(model_name)
         except Exception as e:
-            raise Exception(f"Failed to get fields for model '{model_name}': {e}")
+            raise Exception(
+                f"Failed to get fields for model '{model_name}': {e}"
+            )
 
     def convert_to_anki_fields(
         self, card_data: Dict[str, str], card_type: str, model_name: str = None
@@ -725,22 +778,30 @@ class AnkiCardManager:
         # Validate model exists
         if not self.validate_model_exists(model_name):
             fallback_model = self.get_default_model_for_card_type(card_type)
-            if fallback_model != model_name and self.validate_model_exists(fallback_model):
+            if fallback_model != model_name and self.validate_model_exists(
+                fallback_model
+            ):
                 model_name = fallback_model
             else:
-                raise Exception(f"Model '{model_name}' not found and no valid fallback available")
+                raise Exception(
+                    f"Model '{model_name}' not found and no valid fallback available"
+                )
 
         try:
             field_names = self.get_model_fields(model_name)
         except Exception:
             # Fallback field names
-            field_names = ["Front", "Back"] if card_type != "cloze" else ["Text"]
+            field_names = (
+                ["Front", "Back"] if card_type != "cloze" else ["Text"]
+            )
 
         # Convert based on card type
         if card_type == "front-back":
             fields = {
                 field_names[0]: card_data.get("front", ""),
-                field_names[1]: card_data.get("back", "") if len(field_names) > 1 else "",
+                field_names[1]: (
+                    card_data.get("back", "") if len(field_names) > 1 else ""
+                ),
             }
         elif card_type == "cloze":
             fields = {field_names[0]: card_data.get("text", "")}
@@ -768,10 +829,13 @@ class AnkiCardManager:
             for card_data in cards_data:
                 card_type = card_data.get("card_type", "front-back")
                 model_name = card_data.get(
-                    "model_name", self.get_default_model_for_card_type(card_type)
+                    "model_name",
+                    self.get_default_model_for_card_type(card_type),
                 )
 
-                fields = self.convert_to_anki_fields(card_data["data"], card_type, model_name)
+                fields = self.convert_to_anki_fields(
+                    card_data["data"], card_type, model_name
+                )
 
                 anki_notes.append(
                     {
@@ -785,7 +849,9 @@ class AnkiCardManager:
             # Upload to Anki
             if anki_notes:
                 note_ids = self.anki.add_notes(anki_notes)
-                successful = sum(1 for note_id in note_ids if note_id is not None)
+                successful = sum(
+                    1 for note_id in note_ids if note_id is not None
+                )
                 failed = len(note_ids) - successful
 
                 return {
@@ -817,7 +883,9 @@ def get_anki_connector(api_key: Optional[str] = None) -> AnkiConnector:
 
 
 @mcp.tool
-def create_flashcards(content: str, card_type: str = "front-back") -> Dict[str, Any]:
+def create_flashcards(
+    content: str, card_type: str = "front-back"
+) -> Dict[str, Any]:
     """Convert text into flashcards with LaTeX math rendering for Claude Desktop
 
     Args:
@@ -890,10 +958,16 @@ def upload_to_anki(
         # Convert LaTeX to Anki MathJax format for each card
         for card in cards:
             if "front" in card:
-                card["front"] = FlashcardGenerator.convert_to_anki_mathjax(card["front"])
-                card["back"] = FlashcardGenerator.convert_to_anki_mathjax(card["back"])
+                card["front"] = FlashcardGenerator.convert_to_anki_mathjax(
+                    card["front"]
+                )
+                card["back"] = FlashcardGenerator.convert_to_anki_mathjax(
+                    card["back"]
+                )
             elif "text" in card:
-                card["text"] = FlashcardGenerator.convert_to_anki_mathjax(card["text"])
+                card["text"] = FlashcardGenerator.convert_to_anki_mathjax(
+                    card["text"]
+                )
 
         if not cards:
             return {
@@ -1014,7 +1088,12 @@ def preview_cards(
 
         return {
             "success": True,
-            "data": {"cards": cards, "card_type": card_type, "title": title, "tags": tags},
+            "data": {
+                "cards": cards,
+                "card_type": card_type,
+                "title": title,
+                "tags": tags,
+            },
             "message": f"Generated preview for {len(cards)} flashcard(s)",
             "error": None,
         }
@@ -1114,7 +1193,9 @@ def update_anki_note(
 
 
 @mcp.tool
-def delete_anki_notes(note_ids: List[int], anki_api_key: Optional[str] = None) -> Dict[str, Any]:
+def delete_anki_notes(
+    note_ids: List[int], anki_api_key: Optional[str] = None
+) -> Dict[str, Any]:
     """Delete notes from Anki collection
 
     Args:
@@ -1164,6 +1245,56 @@ def sync_anki(anki_api_key: Optional[str] = None) -> Dict[str, Any]:
             "success": False,
             "data": None,
             "message": "Error syncing Anki",
+            "error": str(e),
+        }
+
+
+@mcp.tool
+def move_notes_to_deck(
+    note_ids: List[int], deck_name: str, anki_api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """Move notes to a different deck
+
+    Args:
+        note_ids: List of note IDs to move
+        deck_name: Target deck name
+        anki_api_key: Optional AnkiConnect API key
+    """
+    try:
+        anki_connector = get_anki_connector(anki_api_key)
+
+        # Get card IDs from note IDs
+        notes_info = anki_connector.notes_info(note_ids)
+        card_ids = []
+        for note in notes_info:
+            card_ids.extend(note.get("cards", []))
+
+        if not card_ids:
+            return {
+                "success": False,
+                "data": None,
+                "message": "No cards found for the given note IDs",
+                "error": "No cards to move",
+            }
+
+        # Move cards to target deck
+        anki_connector.change_deck(card_ids, deck_name)
+
+        return {
+            "success": True,
+            "data": {
+                "note_ids": note_ids,
+                "card_ids": card_ids,
+                "deck_name": deck_name,
+            },
+            "message": f"Successfully moved {len(card_ids)} card(s) to '{deck_name}'",
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": None,
+            "message": "Error moving notes to deck",
             "error": str(e),
         }
 

@@ -208,6 +208,88 @@ class TestFlashcardMCPTools:
         assert result["success"] is False
         assert "Failed" in result["message"]
 
+    @patch.object(AnkiConnector, "_make_request")
+    def test_move_notes_to_deck_success(self, mock_request):
+        """Test move_notes_to_deck tool function."""
+        # Mock notes_info response
+        mock_notes_info = [
+            {
+                "noteId": 123,
+                "cards": [456, 457],
+            },
+            {
+                "noteId": 124,
+                "cards": [458],
+            },
+        ]
+        # Mock changeDeck response
+        mock_request.side_effect = [mock_notes_info, None]
+
+        result = flashcard_server.move_notes_to_deck.fn([123, 124], "New Deck")
+
+        assert result["success"] is True
+        assert result["data"]["note_ids"] == [123, 124]
+        assert result["data"]["card_ids"] == [456, 457, 458]
+        assert result["data"]["deck_name"] == "New Deck"
+        assert "3 card(s)" in result["message"]
+
+    @patch.object(AnkiConnector, "_make_request")
+    def test_move_notes_to_deck_no_cards(self, mock_request):
+        """Test move_notes_to_deck when notes have no cards."""
+        # Mock notes_info response with no cards
+        mock_notes_info = [
+            {
+                "noteId": 123,
+                "cards": [],
+            },
+        ]
+        mock_request.return_value = mock_notes_info
+
+        result = flashcard_server.move_notes_to_deck.fn([123], "New Deck")
+
+        assert result["success"] is False
+        assert "No cards found" in result["message"]
+        assert result["error"] == "No cards to move"
+
+    @patch.object(AnkiConnector, "_make_request")
+    def test_move_notes_to_deck_empty_note_list(self, mock_request):
+        """Test move_notes_to_deck with empty note list."""
+        # Mock notes_info response with empty list
+        mock_request.return_value = []
+
+        result = flashcard_server.move_notes_to_deck.fn([], "New Deck")
+
+        assert result["success"] is False
+        assert "No cards found" in result["message"]
+
+    @patch.object(AnkiConnector, "_make_request")
+    def test_move_notes_to_deck_single_note(self, mock_request):
+        """Test move_notes_to_deck with single note."""
+        mock_notes_info = [
+            {
+                "noteId": 123,
+                "cards": [456],
+            },
+        ]
+        mock_request.side_effect = [mock_notes_info, None]
+
+        result = flashcard_server.move_notes_to_deck.fn([123], "Target Deck")
+
+        assert result["success"] is True
+        assert len(result["data"]["card_ids"]) == 1
+        assert result["data"]["card_ids"] == [456]
+
+    @patch.object(AnkiConnector, "_make_request")
+    def test_move_notes_to_deck_error(self, mock_request):
+        """Test move_notes_to_deck when AnkiConnect error occurs."""
+        mock_request.side_effect = Exception("deck was not found: NonExistent")
+
+        result = flashcard_server.move_notes_to_deck.fn([123], "NonExistent")
+
+        assert result["success"] is False
+        assert "Error moving notes" in result["message"]
+        assert "deck was not found" in result["error"]
+
 
 class TestAnkiCardManager:
     """Test AnkiCardManager functionality."""

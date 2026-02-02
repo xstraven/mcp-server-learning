@@ -220,6 +220,83 @@ class TestAnkiConnectivity:
         call_args = mock_post.call_args
         assert call_args[1]["json"]["params"]["cardsToo"] is False
 
+    @patch("requests.Session.post")
+    def test_notes_info_success(self, mock_post):
+        """Test successful notes info retrieval."""
+        expected_notes = [
+            {
+                "noteId": 123,
+                "modelName": "Basic",
+                "tags": ["test"],
+                "fields": {"Front": {"value": "Q1"}, "Back": {"value": "A1"}},
+                "cards": [456, 457],
+            },
+            {
+                "noteId": 124,
+                "modelName": "Basic",
+                "tags": [],
+                "fields": {"Front": {"value": "Q2"}, "Back": {"value": "A2"}},
+                "cards": [458],
+            },
+        ]
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": expected_notes, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        result = self.anki_connector.notes_info([123, 124])
+
+        assert result == expected_notes
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["action"] == "notesInfo"
+        assert call_args[1]["json"]["params"]["notes"] == [123, 124]
+
+    @patch("requests.Session.post")
+    def test_change_deck_success(self, mock_post):
+        """Test successful deck change for cards."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": None, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Should not raise an exception
+        self.anki_connector.change_deck([456, 457, 458], "New Deck")
+
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["action"] == "changeDeck"
+        assert call_args[1]["json"]["params"]["cards"] == [456, 457, 458]
+        assert call_args[1]["json"]["params"]["deck"] == "New Deck"
+
+    @patch("requests.Session.post")
+    def test_change_deck_empty_card_list(self, mock_post):
+        """Test deck change with empty card list."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": None, "error": None}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        # Should not raise an exception even with empty list
+        self.anki_connector.change_deck([], "New Deck")
+
+        call_args = mock_post.call_args
+        assert call_args[1]["json"]["params"]["cards"] == []
+
+    @patch("requests.Session.post")
+    def test_change_deck_error(self, mock_post):
+        """Test handling of error when changing deck."""
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "result": None,
+            "error": "deck was not found: NonExistent",
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        with pytest.raises(Exception) as exc_info:
+            self.anki_connector.change_deck([456], "NonExistent")
+
+        assert "AnkiConnect error: deck was not found" in str(exc_info.value)
+
 
 class TestAnkiConnectivityIntegration:
     """Integration tests for actual Anki Connect connectivity.
@@ -278,6 +355,57 @@ class TestAnkiConnectivityIntegration:
             assert "Basic" in models
 
         except Exception as e:
+            pytest.skip(f"Anki not available for integration test: {e}")
+
+    @pytest.mark.integration
+    def test_real_anki_move_notes_to_deck(self):
+        """Test moving notes between decks in real Anki instance."""
+        connector = AnkiConnector()
+
+        try:
+            # Create test decks
+            source_deck = "Test_Move_Source"
+            target_deck = "Test_Move_Target"
+            connector.create_deck(source_deck)
+            connector.create_deck(target_deck)
+
+            # Add a test note to source deck
+            note_id = connector.add_note(
+                deck_name=source_deck,
+                model_name="Basic",
+                fields={"Front": "Test Move Question", "Back": "Test Move Answer"},
+                tags=["test-move"],
+            )
+
+            assert note_id is not None
+
+            # Get card IDs from note
+            notes_info = connector.notes_info([note_id])
+            assert len(notes_info) == 1
+            card_ids = notes_info[0].get("cards", [])
+            assert len(card_ids) > 0
+
+            # Move cards to target deck
+            connector.change_deck(card_ids, target_deck)
+
+            # Verify the cards were moved by checking notes_info again
+            # (Note: The notes_info doesn't directly show deck, but we verify no error occurred)
+            updated_info = connector.notes_info([note_id])
+            assert len(updated_info) == 1
+            assert updated_info[0]["noteId"] == note_id
+
+            # Clean up
+            connector.delete_notes([note_id])
+            connector.delete_decks([source_deck, target_deck], cards_too=True)
+
+        except Exception as e:
+            # Clean up on error
+            try:
+                if note_id:
+                    connector.delete_notes([note_id])
+                connector.delete_decks([source_deck, target_deck], cards_too=True)
+            except:
+                pass
             pytest.skip(f"Anki not available for integration test: {e}")
 
 
