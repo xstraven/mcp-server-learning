@@ -619,6 +619,51 @@ Configure the math verification server in Claude Desktop:
 
 This server requires no environment variables - it's ready to use immediately after installation.
 
+## Configuration with ChatGPT Desktop
+
+ChatGPT Desktop requires a remote HTTPS MCP endpoint. Local MCP servers are not supported, so run the
+suite locally and expose it with a tunnel.
+
+Set environment variables if you plan to use Zotero or Obsidian.
+Zotero: `ZOTERO_API_KEY`, `ZOTERO_LIBRARY_ID`, `ZOTERO_LIBRARY_TYPE`
+Obsidian: `OBSIDIAN_VAULT_PATH`
+
+Run the suite server locally:
+
+```bash
+MCP_TRANSPORT=http MCP_PORT=8000 uv run fastmcp-learning-suite
+```
+
+Expose it with ngrok:
+
+```bash
+ngrok http 8000
+```
+
+Optional ngrok config (so you can reuse a named tunnel):
+
+```yaml
+version: "2"
+authtoken: "<your-ngrok-token>"
+tunnels:
+  mcp:
+    proto: http
+    addr: 8000
+```
+
+Then run:
+
+```bash
+ngrok start mcp
+```
+
+In ChatGPT Desktop, add a new MCP server with:
+URL: `https://<ngrok-host>/mcp`
+Auth: None
+Name: `learning-suite` (or any label you prefer)
+
+Tools are namespaced by prefix: `flashcard_*`, `zotero_*`, `obsidian_*`, `math_*`.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
