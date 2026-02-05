@@ -1,0 +1,11 @@
+# Copy this file to ~/.cloudflared/config.yml and replace placeholders.
+# The hostname should be a DNS name you manage in Cloudflare.
+# Path routing is handled by ChatGPT using /mcp/ in the URL.
+
+tunnel: "<TUNNEL_UUID>"
+credentials-file: "/Users/<YOUR_USER>/.cloudflared/<TUNNEL_UUID>.json"
+
+ingress:
+  - hostname: "mcp.<your-domain>"
+    service: "http://localhost:8000"
+  - service: "http_status:404"

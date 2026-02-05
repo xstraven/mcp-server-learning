@@ -621,48 +621,119 @@ This server requires no environment variables - it's ready to use immediately af
 
 ## Configuration with ChatGPT Desktop
 
-ChatGPT Desktop requires a remote HTTPS MCP endpoint. Local MCP servers are not supported, so run the
-suite locally and expose it with a tunnel.
+ChatGPT Desktop requires a remote HTTPS MCP endpoint. Local MCP servers are not supported directly, so run
+the suite on your machine and expose it publicly through a tunnel or cloud deployment.
 
-Set environment variables if you plan to use Zotero or Obsidian.
-Zotero: `ZOTERO_API_KEY`, `ZOTERO_LIBRARY_ID`, `ZOTERO_LIBRARY_TYPE`
-Obsidian: `OBSIDIAN_VAULT_PATH`
+### Choose your exposure mode
 
-Run the suite server locally:
+| Option | Setup effort | URL stability | Best for |
+| --- | --- | --- | --- |
+| ngrok quick tunnel | Very low | Changes on restart | Fast testing |
+| ngrok reserved domain (paid) | Low | Stable | Simple managed stable URL |
+| Cloudflare quick tunnel | Low | Changes on restart | Fast trial without DNS setup |
+| Cloudflare named tunnel + DNS | Medium (one-time) | Stable | Daily use (recommended) |
+| Always-on cloud host (Railway/Fly/Render/VPS) | Medium-high | Stable | Endpoint stays up when laptop is off |
+
+### Recommended: Cloudflare named tunnel + custom subdomain
+
+Set environment variables if you plan to use Zotero or Obsidian:
+- Zotero: `ZOTERO_API_KEY`, `ZOTERO_LIBRARY_ID`, `ZOTERO_LIBRARY_TYPE`
+- Obsidian: `OBSIDIAN_VAULT_PATH`
+
+1. Run the suite locally on port 8000:
 
 ```bash
-MCP_TRANSPORT=http MCP_PORT=8000 uv run fastmcp-learning-suite
+./scripts/run_learning_suite.sh
 ```
 
-Expose it with ngrok:
+2. Install and authenticate cloudflared:
 
 ```bash
+brew install cloudflared
+cloudflared tunnel login
+```
+
+3. Create a named tunnel:
+
+```bash
+cloudflared tunnel create learning-suite-mcp
+```
+
+4. Create Cloudflare config from template and fill placeholders:
+
+```bash
+mkdir -p ~/.cloudflared
+cp scripts/cloudflared-config.example.yml ~/.cloudflared/config.yml
+```
+
+5. Create DNS route to a stable hostname:
+
+```bash
+cloudflared tunnel route dns learning-suite-mcp mcp.<your-domain>
+```
+
+6. Run the tunnel:
+
+```bash
+cloudflared tunnel --config ~/.cloudflared/config.yml run learning-suite-mcp
+```
+
+7. Make tunnel persistent across reboots:
+
+```bash
+sudo cloudflared service install
+```
+
+8. Validate the public endpoint:
+
+```bash
+./scripts/verify_remote_mcp.sh https://mcp.<your-domain>/mcp/
+```
+
+### ChatGPT Desktop MCP settings
+
+Add a new MCP server in ChatGPT Desktop:
+- URL: `https://mcp.<your-domain>/mcp/`
+- Auth: `None`
+- Name: `learning-suite` (or any label you prefer)
+
+Use the trailing slash in the ChatGPT URL to avoid an extra redirect hop.
+
+Tools are namespaced by prefix: `flashcard_*`, `zotero_*`, `obsidian_*`, `math_*`.
+
+### Quick alternatives
+
+#### ngrok quick tunnel
+
+```bash
+./scripts/run_learning_suite.sh
 ngrok http 8000
 ```
 
-Optional ngrok config (so you can reuse a named tunnel):
+Use: `https://<ngrok-host>/mcp/`
 
-```yaml
-version: "2"
-authtoken: "<your-ngrok-token>"
-tunnels:
-  mcp:
-    proto: http
-    addr: 8000
-```
-
-Then run:
+#### ngrok reserved domain (paid)
 
 ```bash
-ngrok start mcp
+ngrok http --url=<reserved-subdomain>.ngrok.app 8000
 ```
 
-In ChatGPT Desktop, add a new MCP server with:
-URL: `https://<ngrok-host>/mcp`
-Auth: None
-Name: `learning-suite` (or any label you prefer)
+Use: `https://<reserved-subdomain>.ngrok.app/mcp/`
 
-Tools are namespaced by prefix: `flashcard_*`, `zotero_*`, `obsidian_*`, `math_*`.
+#### Cloudflare quick tunnel (ephemeral URL)
+
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+
+Use: `https://<random>.trycloudflare.com/mcp/`
+
+### Verification checklist
+
+1. Local server starts and logs `Starting Learning MCP Suite ... /mcp`.
+2. Remote URL responds through the tunnel (`verify_remote_mcp.sh` succeeds).
+3. ChatGPT Desktop lists prefixed tools (`flashcard_*`, `zotero_*`, `obsidian_*`, `math_*`).
+4. Stopping local server causes expected failure; restarting restores tool access.
 
 ## Contributing
 
