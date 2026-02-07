@@ -529,9 +529,7 @@ class TestAnkiConnectivity:
         ]
         mock_post.side_effect = mock_responses
 
-        self.anki_connector.update_note(
-            note_id=note_id, fields={"Front": "Updated Q"}
-        )
+        self.anki_connector.update_note(note_id=note_id, fields={"Front": "Updated Q"})
 
         assert mock_post.call_count == 3
 
@@ -779,9 +777,7 @@ class TestAnkiConnectivityIntegration:
             assert cards_info[0].get("flags") == 7
 
             # Update the note
-            connector.update_note(
-                note_id=note_id, fields={"Front": "Updated Question"}
-            )
+            connector.update_note(note_id=note_id, fields={"Front": "Updated Question"})
 
             # Verify purple flag is still set (reapplied)
             cards_info = connector._make_request("cardsInfo", {"cards": card_ids})

@@ -379,52 +379,43 @@ class TestEdgeCases:
 class TestMCPToolFunctions:
     """Test the MCP tool functions for mathematical verification."""
 
-    def test_verify_step_equality(self):
-        """Test verify_step tool with equality operation."""
-        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+    def test_verify_equivalence_tool(self):
+        """Test verify_equivalence tool with equal expressions."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_equivalence
 
-        result = verify_step.fn("x^2 - 1", "(x-1)(x+1)", operation="equality")
-
-        assert result["success"] is True
-        assert result["data"]["is_valid"] is True
-        assert "successful" in result["message"].lower()
-
-    def test_verify_step_derivative(self):
-        """Test verify_step tool with derivative operation."""
-        from mcp_server_learning.fastmcp_math_verification_server import verify_step
-
-        result = verify_step.fn("x^2", "2*x", operation="derivative")
+        result = verify_equivalence.fn("x^2 - 1", "(x-1)(x+1)")
 
         assert result["success"] is True
         assert result["data"]["is_valid"] is True
+        assert "equivalent" in result["message"].lower()
 
-    def test_verify_step_integral(self):
-        """Test verify_step tool with integral operation."""
-        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+    def test_verify_derivative_tool(self):
+        """Test verify_derivative tool."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_derivative
 
-        result = verify_step.fn("x", "x^2/2", operation="integral")
+        result = verify_derivative.fn("x^2", "x", "2*x")
 
         assert result["success"] is True
         assert result["data"]["is_valid"] is True
 
-    def test_verify_step_unknown_operation(self):
-        """Test verify_step tool with unknown operation."""
-        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+    def test_verify_integral_tool(self):
+        """Test verify_integral tool."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_integral
 
-        result = verify_step.fn("x", "x", operation="unknown")
+        result = verify_integral.fn("x", "x", "x^2/2")
 
-        assert result["success"] is False
-        assert "Unknown operation" in result["message"]
+        assert result["success"] is True
+        assert result["data"]["is_valid"] is True
 
-    def test_verify_step_failed(self):
-        """Test verify_step tool with incorrect result."""
-        from mcp_server_learning.fastmcp_math_verification_server import verify_step
+    def test_verify_derivative_failed(self):
+        """Test verify_derivative tool with incorrect result."""
+        from mcp_server_learning.fastmcp_math_verification_server import verify_derivative
 
-        result = verify_step.fn("x^2", "3*x", operation="derivative")
+        result = verify_derivative.fn("x^2", "x", "3*x")
 
         assert result["success"] is True  # Tool succeeded, verification failed
         assert result["data"]["is_valid"] is False
-        assert "failed" in result["message"].lower()
+        assert "incorrect" in result["message"].lower()
 
     def test_verify_proof_tool(self):
         """Test verify_proof tool function."""

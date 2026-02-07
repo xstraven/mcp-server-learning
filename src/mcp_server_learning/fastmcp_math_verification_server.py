@@ -39,7 +39,24 @@ from sympy import (
 from sympy.parsing.latex import parse_latex
 
 # Initialize FastMCP instance
-mcp = FastMCP("Mathematical Verification Server")
+mcp = FastMCP(
+    "Mathematical Verification Server",
+    instructions="""This server verifies mathematical expressions and proofs using SymPy.
+
+Use these tools when the user wants to:
+- Check if two expressions are equivalent (verify_equivalence)
+- Verify a derivative or integral calculation (verify_derivative, verify_integral)
+- Check if a mathematical identity holds (check_identity)
+- Validate a multi-step proof (verify_proof)
+- Simplify an expression with steps (simplify_expression)
+
+All inputs accept LaTeX format (e.g., "\\frac{d}{dx}(x^2)", "\\int x dx").
+All tools return: {"success": bool, "data": Any, "message": str, "error": str|null}.
+
+Uses symbolic computation (exact, not numerical). For indefinite integrals,
+constants of integration are handled by comparing derivatives.
+""",
+)
 
 
 class LaTeXParser:
@@ -569,80 +586,28 @@ class ProofStepValidator:
 
 
 @mcp.tool
-def verify_step(
-    expression: str,
-    expected_result: str,
-    assumptions: List[str] = None,
-    operation: str = "equality",
-) -> Dict[str, Any]:
-    """Verify a single mathematical step.
-
-    Args:
-        expression: Mathematical expression in LaTeX format (e.g., "\\frac{d}{dx}(x^2)")
-        expected_result: Expected result in LaTeX format (e.g., "2x")
-        assumptions: Optional list of assumptions (e.g., ["x is real"])
-        operation: Type of operation - "equality", "derivative", "integral", or "limit"
-
-    Examples:
-        verify_step("x^2 + 2x + 1", "(x+1)^2", operation="equality")
-        verify_step("x^2", "2x", operation="derivative")
-    """
-    if assumptions is None:
-        assumptions = []
-
-    try:
-        verifier = SymPyVerifier()
-
-        if operation == "equality":
-            result = verifier.verify_equality(expression, expected_result, assumptions)
-        elif operation == "derivative":
-            result = verifier.verify_derivative(expression, "x", expected_result)
-        elif operation == "integral":
-            result = verifier.verify_integral(expression, "x", expected_result)
-        elif operation == "limit":
-            result = verifier.verify_limit(expression, "x", "oo", expected_result)
-        else:
-            return {
-                "success": False,
-                "data": None,
-                "message": f"Unknown operation type: {operation}",
-                "error": "Invalid operation",
-            }
-
-        return {
-            "success": True,
-            "data": result,
-            "message": (
-                "Verification successful" if result.get("is_valid") else "Verification failed"
-            ),
-            "error": None,
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "data": None,
-            "message": "Error verifying step",
-            "error": str(e),
-        }
-
-
-@mcp.tool
 def verify_proof(steps: List[Dict[str, str]], assumptions: List[str] = None) -> Dict[str, Any]:
-    """Verify a multi-step mathematical proof.
+    """Verify a multi-step mathematical proof by checking each step's validity
+    and whether each step follows logically from the previous one.
+
+    The validator auto-detects derivative/integral steps from justification text
+    and applies the appropriate verification method.
 
     Args:
-        steps: List of proof steps. Each step should be a dict with:
+        steps: List of proof steps. Each step is a dict with:
                - 'expression': The mathematical expression (LaTeX)
-               - 'justification': Reason for this step
+               - 'justification': Reason for this step (e.g., "differentiate with respect to x")
                - 'result' (optional): Expected result after this step
-        assumptions: Optional list of assumptions about variables
+        assumptions: Optional list of assumptions (e.g., ["x is real", "n is positive"])
 
     Example:
         steps = [
             {"expression": "\\int x dx", "result": "\\frac{x^2}{2} + C", "justification": "Power rule for integration"},
             {"expression": "\\frac{d}{dx}(\\frac{x^2}{2} + C)", "result": "x", "justification": "Differentiate with respect to x"}
         ]
+
+    Returns {"success": bool, "data": {"all_steps_valid": bool, "total_steps": int,
+    "valid_steps": int, "steps": [...]}, "message": str, "error": str|null}.
     """
     if assumptions is None:
         assumptions = []

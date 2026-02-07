@@ -18,7 +18,6 @@ from mcp_server_learning.fastmcp_flashcard_server import (
 # Path handling is done by conftest.py
 
 
-
 @pytest.mark.usefixtures("anki_test_cleanup")
 def test_sigmoid_flashcard():
     """Test creating a simple sigmoid function flashcard."""

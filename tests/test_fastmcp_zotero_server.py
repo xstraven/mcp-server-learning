@@ -502,7 +502,7 @@ class TestFastMCPZoteroTools:
 
     def test_search_zotero_items_tool(self, mock_zotero_server):
         """Test search_zotero_items tool function."""
-        result = zotero_server.search_zotero_items.fn("test query")
+        result = zotero_server.search_items.fn("test query")
 
         assert result["success"] is True
         assert len(result["data"]) == 1
@@ -511,7 +511,7 @@ class TestFastMCPZoteroTools:
     def test_search_zotero_items_no_results(self, mock_zotero_server):
         """Test search with no results."""
         mock_zotero_server.search_items.return_value = []
-        result = zotero_server.search_zotero_items.fn("nonexistent")
+        result = zotero_server.search_items.fn("nonexistent")
 
         assert result["success"] is True
         assert result["data"] == []
@@ -519,7 +519,7 @@ class TestFastMCPZoteroTools:
 
     def test_get_zotero_item_tool(self, mock_zotero_server):
         """Test get_zotero_item tool function."""
-        result = zotero_server.get_zotero_item.fn("ABC123")
+        result = zotero_server.get_item.fn("ABC123")
 
         assert result["success"] is True
         assert result["data"]["title"] == "Test Item"
@@ -527,7 +527,7 @@ class TestFastMCPZoteroTools:
     def test_get_zotero_item_not_found(self, mock_zotero_server):
         """Test get_zotero_item with non-existent item."""
         mock_zotero_server.get_item.return_value = None
-        result = zotero_server.get_zotero_item.fn("NONEXISTENT")
+        result = zotero_server.get_item.fn("NONEXISTENT")
 
         assert result["success"] is False
         assert "not found" in result["message"]
@@ -550,7 +550,7 @@ class TestFastMCPZoteroTools:
 
     def test_list_zotero_collections_tool(self, mock_zotero_server):
         """Test list_zotero_collections tool function."""
-        result = zotero_server.list_zotero_collections.fn()
+        result = zotero_server.list_collections.fn()
 
         assert result["success"] is True
         assert len(result["data"]) == 1
@@ -559,7 +559,7 @@ class TestFastMCPZoteroTools:
     def test_list_zotero_collections_empty(self, mock_zotero_server):
         """Test list_zotero_collections with no collections."""
         mock_zotero_server.list_collections.return_value = []
-        result = zotero_server.list_zotero_collections.fn()
+        result = zotero_server.list_collections.fn()
 
         assert result["success"] is True
         assert result["data"] == []
@@ -583,7 +583,7 @@ class TestFastMCPZoteroTools:
 
     def test_create_zotero_item_tool(self, mock_zotero_server):
         """Test create_zotero_item tool function."""
-        result = zotero_server.create_zotero_item.fn(
+        result = zotero_server.create_item.fn(
             item_type="book",
             title="New Book",
         )

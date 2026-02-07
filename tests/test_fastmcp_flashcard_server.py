@@ -145,7 +145,7 @@ class TestFlashcardMCPTools:
     def test_create_flashcards_tool(self):
         """Test create_flashcards tool function."""
         content = "Q: What is Python?\nA: A programming language"
-        result = flashcard_server.create_flashcards.fn(content)
+        result = flashcard_server.create_cards.fn(content)
 
         assert result["success"] is True
         assert len(result["data"]["cards"]) == 1
@@ -153,7 +153,7 @@ class TestFlashcardMCPTools:
 
     def test_create_flashcards_empty(self):
         """Test create_flashcards with no valid content."""
-        result = flashcard_server.create_flashcards.fn("")
+        result = flashcard_server.create_cards.fn("")
 
         assert result["success"] is False
         assert "No flashcards" in result["message"]
@@ -161,7 +161,7 @@ class TestFlashcardMCPTools:
     def test_create_flashcards_cloze(self):
         """Test create_flashcards with cloze type."""
         content = "The answer is {{42}}."
-        result = flashcard_server.create_flashcards.fn(content, card_type="cloze")
+        result = flashcard_server.create_cards.fn(content, card_type="cloze")
 
         assert result["success"] is True
         assert len(result["data"]["cards"]) == 1
@@ -170,7 +170,7 @@ class TestFlashcardMCPTools:
     def test_preview_cards_tool(self):
         """Test preview_cards tool function."""
         content = "Q: Question?\nA: Answer"
-        result = flashcard_server.preview_cards.fn(content)
+        result = flashcard_server.create_cards.fn(content)
 
         assert result["success"] is True
         assert len(result["data"]["cards"]) == 1
@@ -178,7 +178,7 @@ class TestFlashcardMCPTools:
 
     def test_preview_cards_empty(self):
         """Test preview_cards with empty content."""
-        result = flashcard_server.preview_cards.fn("")
+        result = flashcard_server.create_cards.fn("")
 
         assert result["success"] is False
         assert "No flashcards" in result["message"]
@@ -192,7 +192,7 @@ class TestFlashcardMCPTools:
             ["Basic", "Cloze"],
         ]
 
-        result = flashcard_server.check_anki_connection.fn()
+        result = flashcard_server.check_connection.fn()
 
         assert result["success"] is True
         assert "Default" in result["data"]["decks"]
@@ -203,7 +203,7 @@ class TestFlashcardMCPTools:
         """Test check_anki_connection when Anki not available."""
         mock_request.side_effect = Exception("connection refused")
 
-        result = flashcard_server.check_anki_connection.fn()
+        result = flashcard_server.check_connection.fn()
 
         assert result["success"] is False
         assert "Failed" in result["message"]
@@ -225,7 +225,7 @@ class TestFlashcardMCPTools:
         # Mock changeDeck response
         mock_request.side_effect = [mock_notes_info, None]
 
-        result = flashcard_server.move_notes_to_deck.fn([123, 124], "New Deck")
+        result = flashcard_server.move_to_deck.fn([123, 124], "New Deck")
 
         assert result["success"] is True
         assert result["data"]["note_ids"] == [123, 124]
@@ -245,7 +245,7 @@ class TestFlashcardMCPTools:
         ]
         mock_request.return_value = mock_notes_info
 
-        result = flashcard_server.move_notes_to_deck.fn([123], "New Deck")
+        result = flashcard_server.move_to_deck.fn([123], "New Deck")
 
         assert result["success"] is False
         assert "No cards found" in result["message"]
@@ -257,7 +257,7 @@ class TestFlashcardMCPTools:
         # Mock notes_info response with empty list
         mock_request.return_value = []
 
-        result = flashcard_server.move_notes_to_deck.fn([], "New Deck")
+        result = flashcard_server.move_to_deck.fn([], "New Deck")
 
         assert result["success"] is False
         assert "No cards found" in result["message"]
@@ -273,7 +273,7 @@ class TestFlashcardMCPTools:
         ]
         mock_request.side_effect = [mock_notes_info, None]
 
-        result = flashcard_server.move_notes_to_deck.fn([123], "Target Deck")
+        result = flashcard_server.move_to_deck.fn([123], "Target Deck")
 
         assert result["success"] is True
         assert len(result["data"]["card_ids"]) == 1
@@ -284,7 +284,7 @@ class TestFlashcardMCPTools:
         """Test move_notes_to_deck when AnkiConnect error occurs."""
         mock_request.side_effect = Exception("deck was not found: NonExistent")
 
-        result = flashcard_server.move_notes_to_deck.fn([123], "NonExistent")
+        result = flashcard_server.move_to_deck.fn([123], "NonExistent")
 
         assert result["success"] is False
         assert "Error moving notes" in result["message"]

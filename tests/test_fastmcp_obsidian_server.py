@@ -115,7 +115,7 @@ def test_missing_env_raises(monkeypatch):
 def test_list_vault_notes(monkeypatch):
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.list_vault_notes.fn(limit=1)
+    result = obs_server.list_notes.fn(limit=1)
 
     assert result["success"] is True
     assert len(result["data"]) == 1
@@ -125,7 +125,7 @@ def test_list_vault_notes(monkeypatch):
 def test_get_obsidian_note_not_found(monkeypatch):
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_obsidian_note.fn("nope")
+    result = obs_server.get_note.fn("nope")
 
     assert result["success"] is False
     assert "not found" in result["message"]
@@ -146,7 +146,7 @@ def test_search_obsidian_notes(monkeypatch):
     """Test search_obsidian_notes returns matching notes."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.search_obsidian_notes.fn("test")
+    result = obs_server.search_notes.fn("test")
 
     assert result["success"] is True
     assert len(result["data"]) == 1
@@ -162,7 +162,7 @@ def test_search_obsidian_notes_no_results(monkeypatch):
             return []
 
     monkeypatch.setattr(obs_server, "_get_connector", lambda: EmptySearchConnector())
-    result = obs_server.search_obsidian_notes.fn("nonexistent")
+    result = obs_server.search_notes.fn("nonexistent")
 
     assert result["success"] is True
     assert result["data"] == []
@@ -200,7 +200,7 @@ def test_get_note_backlinks(monkeypatch):
     """Test get_note_backlinks returns backlinks."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_note_backlinks.fn("NoteB")
+    result = obs_server.get_backlinks.fn("NoteB")
 
     assert result["success"] is True
     assert len(result["data"]) == 1
@@ -219,7 +219,7 @@ def test_get_note_backlinks_no_results(monkeypatch):
             )
 
     monkeypatch.setattr(obs_server, "_get_connector", lambda: NoBacklinksConnector())
-    result = obs_server.get_note_backlinks.fn("NoteB")
+    result = obs_server.get_backlinks.fn("NoteB")
 
     assert result["success"] is True
     assert result["data"] == []
@@ -438,7 +438,7 @@ def test_get_obsidian_note_found(monkeypatch):
     """Test get_obsidian_note returns note details."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_obsidian_note.fn("exists")
+    result = obs_server.get_note.fn("exists")
 
     assert result["success"] is True
     assert result["data"]["title"] == "exists"
@@ -449,7 +449,7 @@ def test_get_notes_for_flashcards(monkeypatch):
     """Test get_notes_for_flashcards returns flashcard content."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_notes_for_flashcards.fn(tag_filter="tag1")
+    result = obs_server.get_flashcard_content.fn(tag_filter="tag1")
 
     assert result["success"] is True
     assert len(result["data"]) >= 1
@@ -460,7 +460,7 @@ def test_get_notes_for_flashcards_by_names(monkeypatch):
     """Test get_notes_for_flashcards with note names."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_notes_for_flashcards.fn(note_names=["exists"])
+    result = obs_server.get_flashcard_content.fn(note_names=["exists"])
 
     assert result["success"] is True
     assert len(result["data"]) >= 1
@@ -470,7 +470,7 @@ def test_get_notes_for_flashcards_missing_params(monkeypatch):
     """Test get_notes_for_flashcards requires note_names or tag_filter."""
     monkeypatch.setenv("OBSIDIAN_VAULT_PATH", "/tmp/vault")
     monkeypatch.setattr(obs_server, "_get_connector", lambda: DummyConnector())
-    result = obs_server.get_notes_for_flashcards.fn()
+    result = obs_server.get_flashcard_content.fn()
 
     assert result["success"] is False
     assert "must be provided" in result["message"]

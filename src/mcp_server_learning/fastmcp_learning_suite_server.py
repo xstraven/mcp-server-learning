@@ -40,7 +40,28 @@ def _mount_suite(suite: FastMCP) -> None:
 
 
 def build_suite() -> FastMCP:
-    suite = FastMCP("Learning MCP Suite")
+    suite = FastMCP(
+        "Learning MCP Suite",
+        instructions="""This suite combines four learning tools under prefixed namespaces:
+
+- flashcard_*: Create, preview, and upload spaced-repetition flashcards to Anki
+- math_*: Verify mathematical expressions, derivatives, integrals, and proofs
+- obsidian_*: Read and search notes in an Obsidian vault
+- zotero_*: Search and manage references in a Zotero library
+
+Common learning workflows:
+1. Obsidian -> Flashcards: obsidian_get_flashcard_content -> flashcard_create_cards -> flashcard_upload_cards
+2. Zotero -> Flashcards: zotero_get_item + zotero_get_item_notes -> flashcard_create_cards -> flashcard_upload_cards
+3. Math verification: math_verify_derivative, math_verify_integral, math_verify_proof
+4. Deck review: flashcard_search_notes -> analyze quality -> flashcard_update_note
+
+All tools return: {"success": bool, "data": Any, "message": str, "error": str|null}.
+Check "success" first; if false, check "error" for details.
+
+Flashcard quality rules: Each card tests ONE fact. Front: 5-20 words. Back: 1-15 words.
+No lists, no yes/no. Start fronts with topic prefix. Use cloze for formulas, Q&A for concepts.
+""",
+    )
     _mount_suite(suite)
     return suite
 

@@ -15,7 +15,25 @@ from fastmcp import FastMCP
 from .obsidian_connector import ObsidianConnector
 
 # Initialize FastMCP instance
-mcp = FastMCP("Obsidian MCP Server")
+mcp = FastMCP(
+    "Obsidian MCP Server",
+    instructions="""This server reads and searches notes in an Obsidian vault.
+
+Use these tools when the user wants to:
+- Browse or search their notes (list_notes, search_notes, get_notes_by_tag)
+- Read a specific note's content, frontmatter, and links (get_note)
+- Explore note connections (get_backlinks, get_orphaned_notes, get_note_links)
+- Extract structured content (extract_headers, extract_blocks)
+- Prepare note content for flashcard generation (get_flashcard_content)
+
+All tools return: {"success": bool, "data": Any, "message": str, "error": str|null}.
+
+Note names are specified WITHOUT the .md extension (e.g., "Linear Algebra Notes").
+Tags can be specified with or without the # prefix.
+
+Requires: OBSIDIAN_VAULT_PATH environment variable set to the vault directory.
+""",
+)
 
 
 def _get_connector() -> ObsidianConnector:
@@ -29,7 +47,13 @@ def _get_connector() -> ObsidianConnector:
 
 @mcp.tool
 def get_vault_stats() -> Dict[str, Any]:
-    """Get statistics about the Obsidian vault"""
+    """Get statistics about the Obsidian vault: total note count, all tags,
+    note types, and total size.
+
+    Returns {"success": bool, "data": {"total_notes": int, "total_tags": int,
+    "all_tags": [str], "note_types": dict, "vault_path": str}, "message": str,
+    "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         stats = obsidian.get_vault_stats()
@@ -50,12 +74,22 @@ def get_vault_stats() -> Dict[str, Any]:
 
 
 @mcp.tool
-def list_vault_notes(
+def list_notes(
     limit: Optional[int] = None,
     offset: int = 0,
     refresh_cache: bool = False,
 ) -> Dict[str, Any]:
-    """List all notes in the vault with optional pagination"""
+    """List all notes in the vault, sorted by modification date (newest first).
+    Supports pagination for large vaults.
+
+    Args:
+        limit: Maximum notes to return (omit for all)
+        offset: Skip this many notes (for pagination)
+        refresh_cache: Force re-scan of vault files
+
+    Returns {"success": bool, "data": [{"name": str, "title": str, "path": str,
+    "tags": [str], "modified": str, ...}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         notes = obsidian.get_notes(limit=limit, offset=offset, refresh_cache=refresh_cache)
@@ -84,12 +118,22 @@ def list_vault_notes(
 
 
 @mcp.tool
-def search_obsidian_notes(
+def search_notes(
     query: str,
     search_in: Optional[List[str]] = None,
     limit: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Search for notes in the vault by content, title, or tags"""
+    """Search for notes in the vault by content, title, or tags. Uses case-insensitive
+    substring matching.
+
+    Args:
+        query: Search text (e.g., "eigenvalue", "calculus")
+        search_in: Where to search -- list of "content", "title", "tags" (default: all three)
+        limit: Maximum results to return (omit for all matches)
+
+    Returns {"success": bool, "data": [{"name": str, "title": str, "content": str,
+    "tags": [str], ...}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         search_in = search_in or ["content", "title", "tags"]
@@ -119,8 +163,22 @@ def search_obsidian_notes(
 
 
 @mcp.tool
-def get_obsidian_note(note_name: str) -> Dict[str, Any]:
-    """Get detailed information about a specific note"""
+def get_note(note_name: str) -> Dict[str, Any]:
+    """Retrieve full content and metadata for a specific Obsidian note, including
+    markdown body, YAML frontmatter, wikilinks, headers, and content blocks.
+
+    Use get_backlinks to find notes linking TO this note, or get_note_links
+    for outgoing links.
+
+    Args:
+        note_name: Note name without .md extension (e.g., "Linear Algebra Notes").
+            Use list_notes or search_notes to find available names.
+
+    Returns {"success": bool, "data": {"title": str, "content": str,
+    "frontmatter": dict, "wikilinks": [{"target": str, "display": str}],
+    "headers": [{"level": int, "text": str}], "blocks": [...], "tags": [str]},
+    "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         note = obsidian.get_note_by_name(note_name)
@@ -150,7 +208,15 @@ def get_obsidian_note(note_name: str) -> Dict[str, Any]:
 
 @mcp.tool
 def get_notes_by_tag(tag: str) -> Dict[str, Any]:
-    """Get all notes that have a specific tag"""
+    """Get all notes with a specific tag (from frontmatter or inline #tags).
+    Case-insensitive matching, with or without the # prefix.
+
+    Args:
+        tag: Tag to filter by (e.g., "calculus" or "#calculus")
+
+    Returns {"success": bool, "data": [{"name": str, "title": str, "content": str,
+    "tags": [str], ...}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         notes = obsidian.get_notes_by_tag(tag)
@@ -179,8 +245,16 @@ def get_notes_by_tag(tag: str) -> Dict[str, Any]:
 
 
 @mcp.tool
-def get_note_backlinks(note_name: str) -> Dict[str, Any]:
-    """Find all notes that link to a specific note"""
+def get_backlinks(note_name: str) -> Dict[str, Any]:
+    """Find all notes that contain a [[wikilink]] to the specified note.
+    Useful for discovering related content and knowledge connections.
+
+    Args:
+        note_name: Note name without .md extension
+
+    Returns {"success": bool, "data": [{"source_note": str, "source_path": str,
+    "link_text": str, "header": str|null}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         backlinks = obsidian.scanner.get_backlinks(note_name)
@@ -210,7 +284,12 @@ def get_note_backlinks(note_name: str) -> Dict[str, Any]:
 
 @mcp.tool
 def get_orphaned_notes() -> Dict[str, Any]:
-    """Find notes that have no incoming or outgoing links"""
+    """Find notes that have no incoming or outgoing [[wikilinks]]. These may
+    need to be connected to the rest of the knowledge graph.
+
+    Returns {"success": bool, "data": [{"name": str, "title": str, "path": str, ...}],
+    "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         orphaned = obsidian.scanner.get_orphaned_notes()
@@ -240,7 +319,15 @@ def get_orphaned_notes() -> Dict[str, Any]:
 
 @mcp.tool
 def get_note_links(note_name: str) -> Dict[str, Any]:
-    """Get all wikilinks from a specific note"""
+    """Get all outgoing [[wikilinks]] from a specific note. Shows what other
+    notes this note references.
+
+    Args:
+        note_name: Note name without .md extension
+
+    Returns {"success": bool, "data": [{"target": str, "display": str,
+    "header": str|null}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         note = obsidian.get_note_by_name(note_name)
@@ -279,7 +366,15 @@ def get_note_links(note_name: str) -> Dict[str, Any]:
 
 @mcp.tool
 def extract_note_headers(note_name: str) -> Dict[str, Any]:
-    """Extract structured headers from a note"""
+    """Extract the header hierarchy (H1-H6) from a note. Useful for
+    understanding note structure before reading full content.
+
+    Args:
+        note_name: Note name without .md extension
+
+    Returns {"success": bool, "data": [{"level": int, "text": str,
+    "line_number": int, "anchor": str}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         note = obsidian.get_note_by_name(note_name)
@@ -318,7 +413,16 @@ def extract_note_headers(note_name: str) -> Dict[str, Any]:
 
 @mcp.tool
 def extract_note_blocks(note_name: str, block_types: Optional[List[str]] = None) -> Dict[str, Any]:
-    """Extract content blocks (paragraphs, lists, quotes, code, headers) from a note"""
+    """Extract content blocks from a note, optionally filtered by type.
+
+    Args:
+        note_name: Note name without .md extension
+        block_types: Filter to specific types. Valid values: "paragraph", "list",
+            "numbered_list", "quote", "code", "header". Omit for all types.
+
+    Returns {"success": bool, "data": [{"type": str, "content": str,
+    "start_line": int, "end_line": int}], "message": str, "error": str|null}.
+    """
     try:
         obsidian = _get_connector()
         note = obsidian.get_note_by_name(note_name)
@@ -360,12 +464,27 @@ def extract_note_blocks(note_name: str, block_types: Optional[List[str]] = None)
 
 
 @mcp.tool
-def get_notes_for_flashcards(
+def get_flashcard_content(
     note_names: Optional[List[str]] = None,
     tag_filter: Optional[str] = None,
     content_types: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Extract content from notes suitable for flashcard generation"""
+    """Extract content from notes that is suitable for flashcard generation.
+    Finds definitions, key terms, list items, and quotes that can be converted
+    into flashcards using the flashcard server's create_cards or upload_cards tools.
+
+    Provide either note_names OR tag_filter (at least one required).
+
+    Args:
+        note_names: List of note names to extract from (without .md extension)
+        tag_filter: Extract from all notes with this tag instead
+        content_types: Types of content to extract. Valid values: "headers",
+            "definitions", "lists", "quotes". Default: all four.
+
+    Returns {"success": bool, "data": [{"type": str, "content": str,
+    "source_note": str, ...}], "message": str, "error": str|null}.
+    Each item can be reformatted into Q:/A: format for flashcard_create_cards.
+    """
     try:
         if not note_names and not tag_filter:
             return {
