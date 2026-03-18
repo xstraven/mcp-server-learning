@@ -1,5 +1,3 @@
-CURRENTLY NOT UNDER ACTIVE DEVELOPMENT IN FAVOR OF AGENT SKILLS
-
 # MCP Server Learning
 
 A Model Context Protocol (MCP) server designed to help with learning and educational tasks. Includes flashcard generation, Zotero integration, Obsidian connectivity, and mathematical verification tools.
